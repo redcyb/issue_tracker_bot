@@ -19,6 +19,12 @@ google-cloud-api-keys = "^0.5.3"
 google-auth-oauthlib = "^1.0.0"
 python-dotenv = "^1.0.0"
 
+[tool.poetry.group.dev]
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.3.3"
+pytest = "^7.4.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
