@@ -1,0 +1,49 @@
+---
+minimum_pre_commit_version: 1.21.0
+fail_fast: false
+default_stages: [commit, push]
+repos:
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        stages: [push]
+
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v3.9.0
+    hooks:
+      - id: reorder-python-imports
+
+#   linters
+  - repo: local
+    hooks:
+      # https://github.com/pre-commit/mirrors-pylint/issues/11
+
+      - id: safety
+        name: safety
+        entry: safety
+        language: system
+        pass_filenames: false
+        args: ["check", "--bare"]
+        stages: [push]
+
+      - id: poetry
+        name: poetry
+        description: Validates the structure of the pyproject.toml file
+        entry: poetry check
+        language: system
+        pass_filenames: false
+        files: ^pyproject.toml$
+        stages: [push]
