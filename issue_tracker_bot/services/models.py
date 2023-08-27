@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic.class_validators import validator
 from pydantic.fields import Field
 from pydantic.main import BaseModel
+from pydantic import field_validator
 
 
 class Chat(BaseModel):
@@ -12,21 +12,22 @@ class Chat(BaseModel):
 
 class User(BaseModel):
     id: int
-    username: Optional[str]
+    username: Optional[str] = None
 
 
 class Message(BaseModel):
-    date: Optional[datetime]
-    message_id: Optional[int]
+    date: Optional[datetime] = None
+    message_id: Optional[int] = None
     text: str
     chat: Chat
     user: User = Field(alias="from")
 
-    @validator("text")
+    @field_validator("text")
+    @classmethod
     def validate_text(cls, value: str):
         return value.strip()
 
 
 class BotRequest(BaseModel):
-    update_id: Optional[int]
+    update_id: Optional[int] = None
     message: Message

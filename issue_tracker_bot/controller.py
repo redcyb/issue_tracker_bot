@@ -1,8 +1,9 @@
+import json
 import logging
 from time import sleep
 
 from issue_tracker_bot.services import Commands
-from issue_tracker_bot.services import GCloudService
+# from issue_tracker_bot.services import GCloudService
 from issue_tracker_bot.services import TelegramService
 
 
@@ -11,7 +12,7 @@ class Controller:
     telegram_service = None
 
     def __init__(self):
-        self.gcloud_service = GCloudService()
+        self.gcloud_service = None  # GCloudService()
         self.telegram_service = TelegramService()
 
     def process(self, request_body: dict):
@@ -34,13 +35,15 @@ class Controller:
         chat_id = request.message.chat.id
 
         if command == Commands.REPORT:
-            try:
-                result = self.gcloud_service.report()
-            except RuntimeError as exc:
-                logging.exception("")
-                result = f"Error: {exc}"
-            self.telegram_service.send_telegram_message_back(chat_id, result)
-            return
+            return json.dumps({"status": "ok", "request": request.model_dump()})
+
+            # try:
+            #     result = self.gcloud_service.report()
+            # except RuntimeError as exc:
+            #     logging.exception("")
+            #     result = f"Error: {exc}"
+            # self.telegram_service.send_telegram_message_back(chat_id, result)
+            # return
 
         if command == Commands.CLONE:
             result = self.gcloud_service.commit_clone()
