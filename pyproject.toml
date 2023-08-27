@@ -2,7 +2,7 @@
 name = "issue-tracker-bot"
 version = "0.1.0"
 description = ""
-authors = ["redcyb <redcyb@gmail.com>"]
+authors = ["Oleksandr Marusyk <redcyb@gmail.com>"]
 readme = "README.md"
 packages = [{include = "issue_tracker_bot"}]
 
