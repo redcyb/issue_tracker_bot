@@ -30,10 +30,6 @@ class Controller:
             self.telegram_service.send_telegram_message_back(chat_id, "No Action")
             return
 
-        # TODO This is only for initial testing without domain
-        logging.info(f"chat_id: '{chat_id}'")
-        self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())
-
         command = self.telegram_service.get_command(request)
         chat_id = request.message.chat.id
 
@@ -51,7 +47,7 @@ class Controller:
         if command == Commands.PROBLEM:
             txt = request.message.text
             parsed = txt.split(" ", 2)
-            c, d, _ = parsed
+            c, d = parsed[0], parsed[1]
             result = f"принял сообщение о проблеме с устройством: {d}"
 
             self.telegram_service.send_telegram_message_back(chat_id, result)
@@ -65,7 +61,7 @@ class Controller:
         if command == Commands.SOLUTION:
             txt = request.message.text
             parsed = txt.split(" ", 2)
-            c, d, _ = parsed
+            c, d = parsed[0], parsed[1]
             result = f"принял сообщение о починке устройства: {d}"
 
             self.telegram_service.send_telegram_message_back(chat_id, result)
@@ -75,3 +71,6 @@ class Controller:
             # result = self.gcloud_service.report()
             # self.telegram_service.send_telegram_message_back(chat_id, result)
             return
+
+        logging.info(f"chat_id: '{chat_id}'")
+        self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())
