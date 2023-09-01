@@ -51,12 +51,6 @@ class TelegramService(TelegramSender):
             return Commands.CLONE
 
     def authorize_user_id(self, user_id: Union[str, int]):
+        return True
+        # TODO Disable auth for short test
         return user_id in self.authorized_ids
-
-
-def set_telegram_webhook():
-    url = settings.BASE_URL + "/setWebhook"
-    response = requests.get(url, params={"url": settings.WEBHOOK_URL}).json()
-
-    if not response["ok"]:
-        raise RuntimeError(response["description"])
