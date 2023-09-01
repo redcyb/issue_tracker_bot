@@ -30,22 +30,22 @@ class Controller:
             self.telegram_service.send_telegram_message_back(chat_id, "No Action")
             return
 
+        # TODO This is only for initial testing without domain
+        logging.info(f"chat_id: '{chat_id}'")
+        self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())
+        return
+
         command = self.telegram_service.get_command(request)
         chat_id = request.message.chat.id
 
-        logging.info(f"chat_id: '{chat_id}'")
-
         if command == Commands.REPORT:
-            self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())
-            return {"status": "ok"}
-
-            # try:
-            #     result = self.gcloud_service.report()
-            # except RuntimeError as exc:
-            #     logging.exception("")
-            #     result = f"Error: {exc}"
-            # self.telegram_service.send_telegram_message_back(chat_id, result)
-            # return
+            try:
+                result = self.gcloud_service.report()
+            except RuntimeError as exc:
+                logging.exception("")
+                result = f"Error: {exc}"
+            self.telegram_service.send_telegram_message_back(chat_id, result)
+            return
 
         if command == Commands.CLONE:
             result = self.gcloud_service.commit_clone()

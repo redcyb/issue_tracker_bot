@@ -37,7 +37,7 @@ class TelegramService(TelegramSender):
 
     @staticmethod
     def parse_request(request_body):
-        return BotRequest.parse_obj(request_body)
+        return BotRequest.model_validate(request_body)
 
     @staticmethod
     def get_command(request: BotRequest):

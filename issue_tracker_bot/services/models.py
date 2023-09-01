@@ -2,8 +2,13 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic.fields import Field
-from pydantic.main import BaseModel
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict
 from pydantic import field_validator
+
+
+class BaseModel(PydanticBaseModel):
+    model_config = ConfigDict(protected_namespaces=tuple())
 
 
 class Chat(BaseModel):
