@@ -50,7 +50,7 @@ class TelegramService(TelegramSender):
             return Commands.SOLUTION
 
         if command == "отчет":
-            return Commands
+            return Commands.REPORT
 
     def authorize_user_id(self, user_id: Union[str, int]):
         return True
