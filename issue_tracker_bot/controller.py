@@ -35,7 +35,7 @@ class Controller:
         chat_id = request.message.chat.id
 
         if command == Commands.REPORT:
-            return json.dumps({"status": "ok", "request": request.model_dump()})
+            return json.dumps({"status": "ok", "request": request.model_dump()}, default=str)
 
             # try:
             #     result = self.gcloud_service.report()
