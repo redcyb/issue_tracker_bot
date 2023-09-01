@@ -41,14 +41,16 @@ class TelegramService(TelegramSender):
 
     @staticmethod
     def get_command(request: BotRequest):
-        if not request.message.text.startswith("/"):
-            return Commands.RECORD
+        command = request.message.text.split(" ", 1)[0]
 
-        if request.message.text == "/report":
-            return Commands.REPORT
+        if command == "проблема":
+            return Commands.PROBLEM
 
-        if request.message.text == "/clone":
-            return Commands.CLONE
+        if command == "решение":
+            return Commands.SOLUTION
+
+        if command == "отчет":
+            return Commands
 
     def authorize_user_id(self, user_id: Union[str, int]):
         return True
