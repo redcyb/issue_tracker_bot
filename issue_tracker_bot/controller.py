@@ -1,4 +1,3 @@
-import json
 import logging
 from time import sleep
 
@@ -22,7 +21,7 @@ class Controller:
         chat_id = request.message.chat.id
         user_id = request.message.user.id
 
-        logging.debug(
+        logging.info(
             f"Handling message '{request.message.text}' "
             f"for user: {request.message.user}"
         )
@@ -34,8 +33,11 @@ class Controller:
         command = self.telegram_service.get_command(request)
         chat_id = request.message.chat.id
 
+        logging.info(f"chat_id: '{chat_id}'")
+
         if command == Commands.REPORT:
-            return json.dumps({"status": "ok", "request": request.model_dump()}, default=str)
+            self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())
+            return {"status": "ok"}
 
             # try:
             #     result = self.gcloud_service.report()
