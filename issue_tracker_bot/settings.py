@@ -33,14 +33,10 @@ CREDENTIALS_PATH = SECRETS_PATH / "credentials.json"
 
 
 def configure_logging():
-    root = logging.getLogger()
-    root.setLevel(LOG_LEVEL)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(LOG_LEVEL)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
     )
-    handler.setFormatter(formatter)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    root.addHandler(handler)
+
+configure_logging()
