@@ -86,6 +86,7 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     txt = update.message.text
     chat_id = update.message.chat_id
     message_id = update.message.id
+    bot = update.get_bot()
 
     if not initiated:
         await update.get_bot().send_message(
@@ -98,8 +99,8 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     record["message"] = txt
     processed[record["device"]].append(record)
 
-    await update.get_bot().delete_message(chat_id, message_id)
-    await update.get_bot().send_message(
+    await bot.delete_message(chat_id, message_id)
+    await bot.send_message(
         chat_id=chat_id,
         text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {record['message']}\" "
     )
