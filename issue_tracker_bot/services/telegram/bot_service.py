@@ -7,21 +7,15 @@ from collections import defaultdict
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from issue_tracker_bot import settings
+from issue_tracker_bot.services.context import AppContext
+
+app_context = AppContext()
+
 logger = logging.getLogger(__name__)
 
 initiated = []
 processed = defaultdict(list)
-
-FMT = "%m-%d-%Y %H:%M:%S"
-
-devices = [i for i in range(1, 71)]
-
-step = 8
-matrix = []
-
-while devices:
-    row, devices = devices[:step], devices[step:]
-    matrix.append(row)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -50,16 +44,18 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = query.data
 
     if msg in ["Проблема", "Решение", "Отчет"]:
-        keyboard = [
-            [
-                InlineKeyboardButton(str(d), callback_data=f"{msg} | {d}") for d in r
-            ] for r in matrix
-        ]
+        keyboard = []
+        for k, v in app_context.devices.items():
+            keyboard.append([])
+            for row in v:
+                keyboard.append([
+                    InlineKeyboardButton(f"{k}{d}", callback_data=f"{msg} | {k}{d}") for d in row
+                ])
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text=f"Действие: {msg}. Выберите устройство", reply_markup=reply_markup
+            text=f"Действие: {msg}. Выберите устройство из групп А или В", reply_markup=reply_markup
         )
 
     else:
@@ -69,7 +65,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             initiated.append({
                 "action": action,
                 "device": device,
-                "time": datetime.datetime.now().strftime(FMT),
+                "time": datetime.datetime.now().strftime(settings.DT_FORMAT),
                 "message": None
             })
 

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 
 from telegram import Update
 
-from issue_tracker_bot.bot_controller import create_application
+from issue_tracker_bot.services.telegram.bot_app_initializer import create_application
 
 app = FastAPI()
 

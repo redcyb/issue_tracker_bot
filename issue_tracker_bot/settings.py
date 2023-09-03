@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from pathlib import Path
 
 import dotenv
@@ -32,6 +31,8 @@ if ENV == "prod":
 LOG_LEVEL = getattr(logging, LOG_LEVEL_STR.upper(), logging.INFO)
 
 CREDENTIALS_PATH = SECRETS_PATH / "credentials.json"
+
+DT_FORMAT = "%m-%d-%Y %H:%M:%S"
 
 
 def configure_logging():
