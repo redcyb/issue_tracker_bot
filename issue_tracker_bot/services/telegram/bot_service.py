@@ -83,27 +83,6 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await query.edit_message_text(text=resp)
 
 
-async def text2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Parses the CallbackQuery and updates the message text."""
-    message = update.message
-
-    if not initiated:
-        await update.get_bot().send_message(
-            chat_id=update.message.chat_id,
-            text="Use /start to test this bot."
-        )
-        return
-
-    record = initiated.pop()
-    record["message"] = message.text
-    processed[record["device"]].append(record)
-
-    await update.get_bot().send_message(
-        chat_id=update.message.chat_id,
-        text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {record['message']}\" "
-    )
-
-
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Parses the CallbackQuery and updates the message text."""
     txt = update.message.text
