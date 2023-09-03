@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler
 
 
-def main() -> None:
+def create_application():
     """Run the bot."""
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(settings.TELEGRAM_TOKEN).build()
@@ -26,13 +26,8 @@ def main() -> None:
     application.add_handler(MessageHandler(None, srv.text))
     application.add_handler(CallbackQueryHandler(srv.button))
 
-    # Run the bot until the user presses Ctrl-C
-    application.run_webhook(
-        listen=settings.TG_WEBHOOK_HOST,
-        port=settings.TG_WEBHOOK_PORT,
-        webhook_url=settings.WEBHOOK_URL
-    )
+    return application
 
 
 if __name__ == "__main__":
-    main()
+    create_application()
