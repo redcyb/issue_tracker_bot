@@ -104,7 +104,7 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     record = initiated.pop()
 
     gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], txt)
+    gcloud.commit_record(record["device"], record["action"], author, txt)
 
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(

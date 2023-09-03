@@ -57,7 +57,7 @@ class GCloudService:
         count = min(settings.REPORTS_LIMIT, len(values))
 
         return f"\nПоследние {count} запис(ь/и/ей):\n\n" + "\n".join(
-            [f"{v[1]} : {v[2].ljust(8)} : {v[3]}" for v in values if v]
+            [f"{v[1]} @{v[2]}\n{v[3].ljust(8)} : {v[4]}" for v in values if v]
         )
 
     def list_sheet_files(self, prefix=settings.SHEET_PREFIX):
@@ -168,9 +168,9 @@ class GCloudService:
         except HttpError as exc:
             raise RuntimeError(f"Request to sheets.batchUpdate was not successful: {exc}")
 
-    def commit_record(self, device, action, message) -> str:
+    def commit_record(self, device, action, author, message) -> str:
         builder = RecordBuilder()
-        builder.build(device, action, message)
+        builder.build(device, action, author, message)
 
         current_range_state = self.load_range(builder.page)
 
@@ -183,7 +183,7 @@ class GCloudService:
         except KeyError:
             last_record_num = 1
 
-        target_range = f"'{builder.page}'!A{last_record_num}:D{last_record_num}"
+        target_range = f"'{builder.page}'!A{last_record_num}:E{last_record_num}"
 
         try:
             self.patch_sheet(target_range, builder.record)
