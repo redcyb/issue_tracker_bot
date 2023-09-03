@@ -56,7 +56,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text=f"Действие: {msg}. Выберите устройство из групп А или В", reply_markup=reply_markup
+            text=f"Действие: {msg}. Выберите устройство из групп А или В",
+            reply_markup=reply_markup
         )
 
     else:
@@ -70,10 +71,9 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "message": None
             })
 
-            resp = f"Действие: {action}. Устройство: {device}. Введите описание."
+            resp = f"Действие: \"{action}\". Устройство: \"{device}\". Введите описание."
 
         else:
-            # if action == ["Проблема", "Решение"]:
             gcloud = GCloudService()
             report = gcloud.report_for_page(f"DEV_{device}")
             resp = f"Отчет для устройства \"{device}\":"
@@ -92,6 +92,7 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.message.chat_id
     message_id = update.message.id
     bot = update.get_bot()
+    author = update.message.from_user.username
 
     if not initiated:
         await update.get_bot().send_message(
@@ -108,7 +109,10 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(
         chat_id=chat_id,
-        text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {txt}\" "
+        text=f"{record['time']}\n"
+             f"Принято сообщение от @{author}\n"
+             f"для устройства \"{record['device']}\":\n\n"
+             f"\"{record['action']} :: {txt}\" "
     )
 
 
