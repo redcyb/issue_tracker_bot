@@ -22,6 +22,9 @@ def create_application():
     application = (
         Application.builder()
         .read_timeout(settings.TG_READ_TIMEOUT)
+        .get_updates_read_timeout(settings.TG_READ_TIMEOUT)
+        .connect_timeout(settings.TG_READ_TIMEOUT)
+        .pool_timeout(settings.TG_READ_TIMEOUT)
         .write_timeout(settings.TG_WRITE_TIMEOUT)
         .token(settings.TELEGRAM_TOKEN).build()
     )

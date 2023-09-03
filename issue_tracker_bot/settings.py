@@ -10,6 +10,9 @@ dotenv.load_dotenv()
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"]
 
+TG_READ_TIMEOUT = 30
+TG_WRITE_TIMEOUT = 30
+
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 ENV = os.environ.get("ENV", "local")
