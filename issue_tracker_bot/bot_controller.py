@@ -13,7 +13,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler
 
 
@@ -28,7 +27,11 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(srv.button))
 
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_webhook(
+        listen=settings.TG_WEBHOOK_HOST,
+        port=settings.TG_WEBHOOK_PORT,
+        webhook_url=settings.WEBHOOK_URL
+    )
 
 
 if __name__ == "__main__":
