@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 
 from issue_tracker_bot import settings
 from issue_tracker_bot.services.context import AppContext
+from issue_tracker_bot.services import GCloudService
 
 app_context = AppContext()
 
@@ -47,13 +48,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             keyboard.append([])
             for row in v:
                 keyboard.append([
-                    InlineKeyboardButton(f"{k}{d}", callback_data=f"{msg} | {k}{d}") for d in row
+                    InlineKeyboardButton(
+                        f"{k}{d}", callback_data=f"{msg} | {k}{d}"
+                    ) for d in row
                 ])
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text=f"Действие: {msg}. Выберите устройство из групп А или В", reply_markup=reply_markup
+            text=f"Действие: {msg}. Выберите устройство из групп А или В",
+            reply_markup=reply_markup
         )
 
     else:
@@ -63,20 +67,21 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             initiated.append({
                 "action": action,
                 "device": device,
-                "time": datetime.datetime.now().strftime(settings.DT_FORMAT),
+                "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
                 "message": None
             })
 
-            resp = f"Действие: {action}. Устройство: {device}. Введите описание."
+            resp = f"Действие: \"{action}\". Устройство: \"{device}\". Введите описание."
 
         else:
-            # if action == ["Проблема", "Решение"]:
+            gcloud = GCloudService()
+            report = gcloud.report_for_page(f"DEV_{device}")
             resp = f"Отчет для устройства \"{device}\":"
-            reps = processed[device]
-            if not reps:
-                resp += "\n\nНет записей для этого устройства."
+
+            if not report:
+                resp = f"\n\nНет записей для устройства \"{device}\""
             else:
-                resp += "\n\n" + "\n".join([f'<{r["time"]}> {r["action"]}: {r["message"]}' for r in reps])
+                resp += f"\n{report}"
 
         await query.edit_message_text(text=resp)
 
@@ -87,6 +92,7 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.message.chat_id
     message_id = update.message.id
     bot = update.get_bot()
+    author = update.message.from_user.username
 
     if not initiated:
         await update.get_bot().send_message(
@@ -96,13 +102,17 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     record = initiated.pop()
-    record["message"] = txt
-    processed[record["device"]].append(record)
+
+    gcloud = GCloudService()
+    gcloud.commit_record(record["device"], record["action"], author, txt)
 
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(
         chat_id=chat_id,
-        text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {record['message']}\" "
+        text=f"{record['time']}\n"
+             f"Принято сообщение от @{author}\n"
+             f"для устройства \"{record['device']}\":\n\n"
+             f"\"{record['action']} :: {txt}\" "
     )
 
 

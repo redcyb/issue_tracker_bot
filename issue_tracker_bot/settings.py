@@ -32,7 +32,13 @@ LOG_LEVEL = getattr(logging, LOG_LEVEL_STR.upper(), logging.INFO)
 
 CREDENTIALS_PATH = SECRETS_PATH / "credentials.json"
 
-DT_FORMAT = "%m-%d-%Y %H:%M:%S"
+REPORT_DT_FORMAT = "%m-%d-%Y %H:%M:%S"
+GDOC_NAME_DT_FORMAT = "%m-%d-%Y---%H-%M-%S"
+
+SHEET_NAME = os.environ["SHEET_NAME"]
+SHEET_ID = os.environ["SHEET_ID"]
+
+REPORTS_LIMIT = 10
 
 
 def configure_logging():
