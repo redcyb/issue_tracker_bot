@@ -57,7 +57,7 @@ class GCloudService:
         count = min(settings.REPORTS_LIMIT, len(values))
 
         return f"\nПоследние {count} запис(ь/и/ей):\n\n" + "\n".join(
-            [f"{v[1]} @{v[2]}\n{v[3].ljust(8)} : {v[4]}" for v in values if v]
+            [f"{v[1]} @{v[2]}\n{v[3].ljust(8)} : {v[4]}\n" for v in values if v]
         )
 
     def list_sheet_files(self, prefix=settings.SHEET_PREFIX):
