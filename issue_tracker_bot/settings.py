@@ -13,7 +13,6 @@ WEBHOOK_URL = os.environ["WEBHOOK_URL"]
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 ENV = os.environ.get("ENV", "local")
-HOST_URL = os.environ["HOST_URL"]
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 ROOT_PATH = Path(__file__).absolute().parent.parent
