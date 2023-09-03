@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from pathlib import Path
 
 import dotenv
@@ -10,10 +9,12 @@ dotenv.load_dotenv()
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"]
 
+TG_READ_TIMEOUT = 30
+TG_WRITE_TIMEOUT = 30
+
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 ENV = os.environ.get("ENV", "local")
-HOST_URL = os.environ["HOST_URL"]
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 ROOT_PATH = Path(__file__).absolute().parent.parent
@@ -31,16 +32,14 @@ LOG_LEVEL = getattr(logging, LOG_LEVEL_STR.upper(), logging.INFO)
 
 CREDENTIALS_PATH = SECRETS_PATH / "credentials.json"
 
+DT_FORMAT = "%m-%d-%Y %H:%M:%S"
+
 
 def configure_logging():
-    root = logging.getLogger()
-    root.setLevel(LOG_LEVEL)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(LOG_LEVEL)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
     )
-    handler.setFormatter(formatter)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    root.addHandler(handler)
+
+configure_logging()

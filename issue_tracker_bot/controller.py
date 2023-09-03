@@ -1,4 +1,3 @@
-import json
 import logging
 from time import sleep
 
@@ -22,7 +21,7 @@ class Controller:
         chat_id = request.message.chat.id
         user_id = request.message.user.id
 
-        logging.debug(
+        logging.info(
             f"Handling message '{request.message.text}' "
             f"for user: {request.message.user}"
         )
@@ -35,27 +34,43 @@ class Controller:
         chat_id = request.message.chat.id
 
         if command == Commands.REPORT:
-            return json.dumps({"status": "ok", "request": request.model_dump()})
-
+            result = "последние обновления\n1\n2\n3"
+            self.telegram_service.send_telegram_message_back(chat_id, result)
             # try:
             #     result = self.gcloud_service.report()
             # except RuntimeError as exc:
             #     logging.exception("")
             #     result = f"Error: {exc}"
             # self.telegram_service.send_telegram_message_back(chat_id, result)
-            # return
-
-        if command == Commands.CLONE:
-            result = self.gcloud_service.commit_clone()
-            self.telegram_service.send_telegram_message_back(chat_id, result)
-            sleep(1)
-            result = self.gcloud_service.report()
-            self.telegram_service.send_telegram_message_back(chat_id, result)
             return
 
-        if command == Commands.RECORD:
-            result = self.gcloud_service.commit_record(request.message.text)
+        if command == Commands.PROBLEM:
+            txt = request.message.text
+            parsed = txt.split(" ", 2)
+            c, d = parsed[0], parsed[1]
+            result = f"принял сообщение о проблеме с устройством: {d}"
+
             self.telegram_service.send_telegram_message_back(chat_id, result)
-            sleep(1)
-            result = self.gcloud_service.report()
+            # result = self.gcloud_service.commit_record(request.message.text)
+            # self.telegram_service.send_telegram_message_back(chat_id, result)
+            # sleep(1)
+            # result = self.gcloud_service.report()
+            # self.telegram_service.send_telegram_message_back(chat_id, result)
+            return
+
+        if command == Commands.SOLUTION:
+            txt = request.message.text
+            parsed = txt.split(" ", 2)
+            c, d = parsed[0], parsed[1]
+            result = f"принял сообщение о починке устройства: {d}"
+
             self.telegram_service.send_telegram_message_back(chat_id, result)
+            # result = self.gcloud_service.commit_record(request.message.text)
+            # self.telegram_service.send_telegram_message_back(chat_id, result)
+            # sleep(1)
+            # result = self.gcloud_service.report()
+            # self.telegram_service.send_telegram_message_back(chat_id, result)
+            return
+
+        logging.info(f"chat_id: '{chat_id}'")
+        self.telegram_service.send_telegram_message_back(chat_id, request.model_dump_json())

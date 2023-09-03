@@ -37,26 +37,22 @@ class TelegramService(TelegramSender):
 
     @staticmethod
     def parse_request(request_body):
-        return BotRequest.parse_obj(request_body)
+        return BotRequest.model_validate(request_body)
 
     @staticmethod
     def get_command(request: BotRequest):
-        if not request.message.text.startswith("/"):
-            return Commands.RECORD
+        command = request.message.text.split(" ", 1)[0]
 
-        if request.message.text == "/report":
+        if command == "проблема":
+            return Commands.PROBLEM
+
+        if command == "решение":
+            return Commands.SOLUTION
+
+        if command == "отчет":
             return Commands.REPORT
 
-        if request.message.text == "/clone":
-            return Commands.CLONE
-
     def authorize_user_id(self, user_id: Union[str, int]):
+        return True
+        # TODO Disable auth for short test
         return user_id in self.authorized_ids
-
-
-def set_telegram_webhook():
-    url = settings.BASE_URL + "/setWebhook"
-    response = requests.get(url, params={"url": settings.WEBHOOK_URL}).json()
-
-    if not response["ok"]:
-        raise RuntimeError(response["description"])
