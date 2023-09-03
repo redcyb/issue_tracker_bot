@@ -74,18 +74,21 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         else:
             # if action == ["Проблема", "Решение"]:
+            gcloud = GCloudService()
+            report = gcloud.report_for_page(f"DEV_{device}")
             resp = f"Отчет для устройства \"{device}\":"
-            reps = processed[device]
-            if not reps:
-                resp += "\n\nНет записей для этого устройства."
+
+            if not report:
+                resp = f"\n\nНет записей для устройства \"{device}\""
             else:
-                resp += "\n\n" + "\n".join([f'<{r["time"]}> {r["action"]}: {r["message"]}' for r in reps])
+                resp += f"\n{report}"
 
         await query.edit_message_text(text=resp)
 
 
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Parses the CallbackQuery and updates the message text."""
+    txt = update.message.text
     chat_id = update.message.chat_id
     message_id = update.message.id
     bot = update.get_bot()
@@ -100,12 +103,12 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     record = initiated.pop()
 
     gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], update.message.text)
+    gcloud.commit_record(record["device"], record["action"], txt)
 
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(
         chat_id=chat_id,
-        text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {record['message']}\" "
+        text=f"<{record['time']}> Принято сообщение для устройства \"{record['device']}\": \"{record['action']} :: {txt}\" "
     )
 
 

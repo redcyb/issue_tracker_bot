@@ -12,7 +12,7 @@ class RecordBuilder:
     record = None
 
     def build(self, device: str, action: str, message: str):
-        self.page = device.strip()
+        self.page = f"DEV_{device.strip()}"
         self.action = action.strip()
         self.message = message.strip()
         self.date = datetime.now().strftime(settings.REPORT_DT_FORMAT)

@@ -38,6 +38,8 @@ GDOC_NAME_DT_FORMAT = "%m-%d-%Y---%H-%M-%S"
 SHEET_NAME = os.environ["SHEET_NAME"]
 SHEET_ID = os.environ["SHEET_ID"]
 
+REPORTS_LIMIT = 10
+
 
 def configure_logging():
     logging.basicConfig(
