@@ -1,5 +1,3 @@
-# pylint: disable=wrong-import-position
-
 import datetime
 import logging
 from collections import defaultdict
