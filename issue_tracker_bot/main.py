@@ -6,7 +6,6 @@ from issue_tracker_bot.bot_controller import create_application
 
 app = FastAPI()
 
-
 ta = create_application()
 
 
