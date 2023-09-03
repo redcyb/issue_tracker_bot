@@ -19,7 +19,12 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Mess
 def create_application():
     """Run the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(settings.TELEGRAM_TOKEN).build()
+    application = (
+        Application.builder()
+        .read_timeout(settings.TG_READ_TIMEOUT)
+        .write_timeout(settings.TG_WRITE_TIMEOUT)
+        .token(settings.TELEGRAM_TOKEN).build()
+    )
 
     application.add_handler(CommandHandler("help", srv.help_command))
     application.add_handler(CommandHandler("start", srv.start))
