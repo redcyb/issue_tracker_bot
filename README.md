@@ -17,5 +17,5 @@ prepare `authorized_ids.json` and `credentials.json` and put them into `secrets`
 then run
 
 ```bash
-gunicorn issue_tracker_bot.main:gunicorn_app
+gunicorn issue_tracker_bot.main:app -k uvicorn.workers.UvicornWorker
 ```

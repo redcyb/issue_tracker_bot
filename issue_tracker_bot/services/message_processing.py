@@ -13,8 +13,9 @@ class RecordBuilder:
     author = None
 
     def build(self, device: str, action: str, author: str, message: str):
-        self.page = f"DEV_{device.strip()}"
-        self.action = action.strip()
+        self.device = device.strip()
+        self.page = f"DEV_{self.device}"
+        self.action = action.strip().lower()
         self.message = message.strip()
         self.author = author.strip()
         self.date = datetime.now().strftime(settings.REPORT_DT_FORMAT)

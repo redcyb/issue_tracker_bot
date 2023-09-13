@@ -19,7 +19,6 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 ROOT_PATH = Path(__file__).absolute().parent.parent
 SECRETS_PATH = ROOT_PATH / "secrets"
-SHEET_PREFIX = os.environ.get("SHEET_PREFIX", "Home Test")
 LOG_LEVEL_STR = str(os.environ.get("LOG_LEVEL", "DEBUG"))
 FOLDER_NAME = os.environ.get("FOLDER", "Home")
 FOLDER_ID = os.environ["FOLDER_ID"]
@@ -35,8 +34,8 @@ CREDENTIALS_PATH = SECRETS_PATH / "credentials.json"
 REPORT_DT_FORMAT = "%m-%d-%Y %H:%M:%S"
 GDOC_NAME_DT_FORMAT = "%m-%d-%Y---%H-%M-%S"
 
-SHEET_NAME = os.environ["SHEET_NAME"]
-SHEET_ID = os.environ["SHEET_ID"]
+TRACKING_SHEET_ID = os.environ["TRACKING_SHEET_ID"]
+CONTEXT_SHEET_ID = os.environ["CONTEXT_SHEET_ID"]
 
 REPORTS_LIMIT = 10
 
