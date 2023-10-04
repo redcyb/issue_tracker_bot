@@ -7,8 +7,9 @@ from telegram.ext import ContextTypes
 
 from issue_tracker_bot import settings
 from issue_tracker_bot.services.context import AppContext
-from issue_tracker_bot.services import GCloudService
+from issue_tracker_bot.services import GCloudService, Actions
 
+GCloudService().enrich_app_context()
 app_context = AppContext()
 
 logger = logging.getLogger(__name__)
@@ -17,19 +18,50 @@ initiated = []
 processed = defaultdict(list)
 
 
+DEVICES_IN_ROW = 8
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a message with three inline buttons attached."""
     keyboard = [
         [
-            InlineKeyboardButton("Проблема", callback_data="Проблема"),
-            InlineKeyboardButton("Решение", callback_data="Решение"),
-            InlineKeyboardButton("Отчет", callback_data="Отчет")
+            InlineKeyboardButton(Actions.PROBLEM.value, callback_data=Actions.PROBLEM.value),
+            InlineKeyboardButton(Actions.SOLUTION.value, callback_data=Actions.SOLUTION.value),
+            InlineKeyboardButton(Actions.REPORT.value, callback_data=Actions.REPORT.value)
         ],
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+    await update.message.reply_text("Оберіть Дію:", reply_markup=reply_markup)
+
+
+def filter_only_problems(devices_groups):
+    result = defaultdict(list)
+
+    for group, dev_names in devices_groups.items():
+        for dev_name in dev_names:
+            if dev_name in app_context.open_problems:
+                result[group].append(dev_name)
+
+    return result
+
+
+def build_keyboard(devices_groups, action):
+    keyboard = []
+    for group, dev_names in devices_groups.items():
+        keyboard.append([])
+        while dev_names:
+            batch, dev_names = (
+                dev_names[:DEVICES_IN_ROW],
+                dev_names[DEVICES_IN_ROW:]
+            )
+            keyboard.append([
+                InlineKeyboardButton(
+                    dev_name, callback_data=f"{action} | {dev_name}"
+                ) for dev_name in batch
+            ])
+    return InlineKeyboardMarkup(keyboard)
 
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -40,30 +72,34 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     await query.answer()
 
-    msg = query.data
+    msg = query.data.strip()
+    action = msg.lower()
 
-    if msg in ["Проблема", "Решение", "Отчет"]:
-        keyboard = []
-        for k, v in app_context.devices.items():
-            keyboard.append([])
-            for row in v:
-                keyboard.append([
-                    InlineKeyboardButton(
-                        f"{k}{d}", callback_data=f"{msg} | {k}{d}"
-                    ) for d in row
-                ])
+    if action == Actions.SOLUTION.value:
+        problematic_devices = filter_only_problems(app_context.devices)
+        reply_markup = build_keyboard(problematic_devices, action)
+        if problematic_devices:
+            await query.edit_message_text(
+                text=f"Дія: {msg}. Оберіть пристрій",
+                reply_markup=reply_markup
+            )
+        else:
+            await query.edit_message_text(
+                text=f"Не знайдено жодного пристрою із відкритою проблемою",
+            )
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
+    elif action in [Actions.PROBLEM.value, Actions.REPORT.value]:
+        reply_markup = build_keyboard(app_context.devices, msg)
         await query.edit_message_text(
-            text=f"Действие: {msg}. Выберите устройство из групп А или В",
+            text=f"Дія: {msg}. Оберіть пристрій",
             reply_markup=reply_markup
         )
 
     else:
         action, device = msg.split(" | ")
+        action = action.strip().lower()
 
-        if action in ["Проблема", "Решение"]:
+        if action in [Actions.PROBLEM.value, Actions.SOLUTION.value]:
             initiated.append({
                 "action": action,
                 "device": device,
@@ -71,15 +107,15 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "message": None
             })
 
-            resp = f"Действие: \"{action}\". Устройство: \"{device}\". Введите описание."
+            resp = f"Дія: \"{action}\". Устройство: \"{device}\". Введите описание."
 
         else:
             gcloud = GCloudService()
             report = gcloud.report_for_page(f"DEV_{device}")
-            resp = f"Отчет для устройства \"{device}\":"
+            resp = f"Статус для пристрою \"{device}\":"
 
             if not report:
-                resp = f"\n\nНет записей для устройства \"{device}\""
+                resp = f"\n\nНема записів для пристроя \"{device}\""
             else:
                 resp += f"\n{report}"
 
@@ -92,7 +128,14 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.message.chat_id
     message_id = update.message.id
     bot = update.get_bot()
-    author = update.message.from_user.username
+    user = update.message.from_user
+
+    author = user.username
+    author_str = f"@{author}"
+    if not author:
+        author = user.full_name
+        author_str = author
+    author_record = f"{author} ({user.id})"
 
     if not initiated:
         await update.get_bot().send_message(
@@ -104,14 +147,14 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     record = initiated.pop()
 
     gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], author, txt)
+    gcloud.commit_record(record["device"], record["action"], author_record, txt)
 
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(
         chat_id=chat_id,
         text=f"{record['time']}\n"
-             f"Принято сообщение от @{author}\n"
-             f"для устройства \"{record['device']}\":\n\n"
+             f"Прийнято запис від {author_str}\n"
+             f"для пристроя \"{record['device']}\":\n\n"
              f"\"{record['action']} :: {txt}\" "
     )
 

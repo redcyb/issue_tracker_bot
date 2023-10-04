@@ -1,16 +1,17 @@
 import logging
-from datetime import datetime
+from collections import defaultdict
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from issue_tracker_bot import settings
+from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.gcloud.auth import get_credentials
 from issue_tracker_bot.services.message_processing import RecordBuilder
 
-SHEET_ID = settings.SHEET_ID
-SHEET_NAME = settings.SHEET_NAME
+TRACKING_SHEET_ID = settings.TRACKING_SHEET_ID
+CONTEXT_SHEET_ID = settings.CONTEXT_SHEET_ID
 FOLDER_ID = settings.FOLDER_ID
 
 app_context = AppContext()
@@ -41,26 +42,13 @@ class GCloudService:
             "sheets", "v4", credentials=self.credentials, cache_discovery=False
         )
 
-    def report_for_page(self, page_name):
-        if not self.credentials:
-            raise RuntimeError("No valid credentials found for 'sheets'")
+    def enrich_app_context(self):
+        self._load_devices_list()
+        self._load_problems_list()
+        self._load_solutions_list()
+        self._load_open_problems()
 
-        current_range_state = self.load_range(page_name)
-        if not current_range_state:
-            return None
-
-        if "values" not in current_range_state:
-            return None
-
-        values = current_range_state["values"]
-
-        count = min(settings.REPORTS_LIMIT, len(values))
-
-        return f"\nПоследние {count} запис(ь/и/ей):\n\n" + "\n".join(
-            [f"{v[1]} @{v[2]}\n{v[3].ljust(8)} : {v[4]}\n" for v in values if v]
-        )
-
-    def list_sheet_files(self, prefix=settings.SHEET_PREFIX):
+    def list_sheet_files(self):
         if not self.credentials:
             raise RuntimeError("No valid credentials found for 'drive.list_sheets'")
 
@@ -72,8 +60,7 @@ class GCloudService:
             response = (
                 self.drive_service.files()
                 .list(
-                    q=f"name contains '{prefix}' "
-                      f"AND mimeType = 'application/vnd.google-apps.spreadsheet'",
+                    q=f"\"{FOLDER_ID}\" in parents",
                     pageToken=page_token,
                     spaces="drive",
                 )
@@ -89,13 +76,32 @@ class GCloudService:
 
         return files
 
-    def load_range(self, range_):
+    def report_for_page(self, page_name):
+        if not self.credentials:
+            raise RuntimeError("No valid credentials found for 'sheets'")
+
+        current_range_state = self.load_range(TRACKING_SHEET_ID, page_name)
+        if not current_range_state:
+            return None
+
+        if "values" not in current_range_state:
+            return None
+
+        values = current_range_state["values"]
+
+        count = min(settings.REPORTS_LIMIT, len(values))
+
+        return f"\nПоследние {count} запис(ь/и/ей):\n\n" + "\n".join(
+            [f"{v[1]} @{v[2]}\n{v[3].ljust(8)} : {v[4]}\n" for v in values if v]
+        )
+
+    def load_range(self, sheet_id, range_):
         sheets = self.sheet_service.spreadsheets()
 
         try:
             result = (
                 sheets.values()
-                .get(spreadsheetId=SHEET_ID, range=range_)
+                .get(spreadsheetId=sheet_id, range=range_)
                 .execute()
             )
         except HttpError as exc:
@@ -105,9 +111,26 @@ class GCloudService:
 
         return result
 
-    def patch_sheet(self, range_, record):
+    def load_many_ranges(self, sheet_id, ranges):
+        sheets = self.sheet_service.spreadsheets()
+
+        try:
+            result = (
+                sheets.values()
+                .batchGet(spreadsheetId=sheet_id, ranges=ranges)
+                .execute()
+            )
+        except HttpError as exc:
+            breakpoint()
+            if "Unable to parse range" in str(exc):
+                return None
+            raise exc
+
+        return result
+
+    def patch_sheet(self, sheet_id, range_, record):
         logging.debug(
-            f"Trying to patch sheet '{SHEET_ID}' with '{record}' on page '{range_}'"
+            f"Trying to patch sheet '{sheet_id}' with '{record}' on page '{range_}'"
         )
 
         if not self.credentials:
@@ -119,7 +142,7 @@ class GCloudService:
             (
                 sheets.values()
                 .append(
-                    spreadsheetId=SHEET_ID,
+                    spreadsheetId=sheet_id,
                     range=range_,
                     body={
                         "values": [record],
@@ -133,22 +156,10 @@ class GCloudService:
         except HttpError as exc:
             raise RuntimeError(f"Request to sheets.values was not successful: {exc}")
 
-    def clone_current_sheet_file(self):
-        postfix = datetime.now().strftime(settings.GDOC_NAME_DT_FORMAT)
-        target_name = f"{SHEET_NAME} - Clone - {postfix}"
-        response = (
-            self.drive_service.files()
-            .copy(
-                fileId=SHEET_ID, body={"name": target_name, "parents": [FOLDER_ID]}
-            )
-            .execute()
-        )
-        return response
-
     def delete_sheet_file(self, sheet_id):
         return self.drive_service.files().delete(fileId=sheet_id).execute()
 
-    def create_page(self, page_name):
+    def create_page(self, sheet_id, page_name):
         sheets = self.sheet_service.spreadsheets()
 
         requests_body = {
@@ -164,19 +175,28 @@ class GCloudService:
         }
 
         try:
-            sheets.batchUpdate(spreadsheetId=SHEET_ID, body=requests_body).execute()
+            sheets.batchUpdate(spreadsheetId=sheet_id, body=requests_body).execute()
         except HttpError as exc:
             raise RuntimeError(f"Request to sheets.batchUpdate was not successful: {exc}")
+
+    def manage_problem_in_cache(self, action, device, problem):
+        if action == Actions.PROBLEM.value:
+            app_context.open_problems[device] = problem
+        if action == Actions.SOLUTION.value:
+            try:
+                del app_context.open_problems[device]
+            except KeyError:
+                ...
 
     def commit_record(self, device, action, author, message) -> str:
         builder = RecordBuilder()
         builder.build(device, action, author, message)
 
-        current_range_state = self.load_range(builder.page)
+        current_range_state = self.load_range(TRACKING_SHEET_ID, builder.page)
 
         if not current_range_state:
-            self.create_page(builder.page)
-            current_range_state = self.load_range(builder.page)
+            self.create_page(TRACKING_SHEET_ID, builder.page)
+            current_range_state = self.load_range(TRACKING_SHEET_ID, builder.page)
 
         try:
             last_record_num = len(current_range_state["values"]) + 1
@@ -186,14 +206,81 @@ class GCloudService:
         target_range = f"'{builder.page}'!A{last_record_num}:E{last_record_num}"
 
         try:
-            self.patch_sheet(target_range, builder.record)
+            self.patch_sheet(TRACKING_SHEET_ID, target_range, builder.record)
         except Exception as exc:
             logging.exception("")
             return f"Error: {exc}"
 
+        self.manage_problem_in_cache(builder.action, builder.device, builder.record)
         answer = (
-            f"Record was created with message '{message}' "
-            f"on sheet '{SHEET_NAME}' on page '{builder.page}'"
+            f"Record was created with message '{message}' on page '{builder.page}'"
         )
         logging.info(answer)
         return answer
+
+    def list_all_sheets(self):
+        sheet_metadata = self.sheet_service.spreadsheets().get(spreadsheetId=TRACKING_SHEET_ID).execute()
+        sheets = sheet_metadata.get("sheets", "")
+        return [
+            {
+                "title": sh["properties"]["title"],
+            } for sh in sheets
+        ]
+
+    def _load_open_problems(self):
+        def _get_device(_rng: str):
+            return _rng.split("!")[0].lstrip("DEV_")
+
+        def _is_last_action_problem(_vals: list):
+            return _vals[-1][3].lower() == Actions.PROBLEM.value
+
+        ranges = [f'{sh["title"]}!A:Z' for sh in self.list_all_sheets()]
+        all_values = self.load_many_ranges(TRACKING_SHEET_ID, ranges)
+        all_values = all_values["valueRanges"]
+
+        device_values_map = {
+            _get_device(sh["range"]): sh["values"] for sh in all_values
+            if _is_last_action_problem(sh["values"])
+        }
+
+        app_context.set_open_problems(device_values_map)
+
+    def _load_problems_list(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:A1000")["values"]
+        app_context.set_problems_kinds([v[0] for v in values])
+        return app_context.problems_kinds
+
+    def _load_solutions_list(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "solutions!A1:A1000")["values"]
+        app_context.set_solutions_kinds([v[0] for v in values])
+        return app_context.solutions_kinds
+
+    def _load_devices_list(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "devices!A1:B1000")["values"]
+        names, values = values[0], values[1:]
+        groups_cnt = len(names)
+
+        app_context.devices = defaultdict(list)
+
+        for i in range(groups_cnt):
+            group = names[i]
+            app_context.devices[group] = [v[i] for v in values if v[i]]
+
+        return app_context.devices
+
+
+if __name__ == '__main__':
+    from pprint import pprint
+
+    svc = GCloudService()
+    svc._load_devices_list()
+    svc._load_open_problems()
+
+    # pprint(svc.list_sheet_files())
+
+    # svc.load_problems_list()
+    # svc.load_solutions_list()
+
+    # print(app_context.problems)
+    # print(app_context.solutions)
+    # pprint(app_context.devices)
