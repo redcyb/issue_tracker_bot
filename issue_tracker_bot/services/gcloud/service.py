@@ -232,6 +232,9 @@ class GCloudService:
             return _rng.split("!")[0].lstrip("DEV_")
 
         def _is_last_action_problem(_vals: list):
+            if not _vals:
+                # Case with empty sheet
+                return False
             return _vals[-1][3].lower() == Actions.PROBLEM.value
 
         ranges = [f'{sh["title"]}!A:Z' for sh in self.list_all_sheets()]
@@ -240,7 +243,7 @@ class GCloudService:
 
         device_values_map = {
             _get_device(sh["range"]): sh["values"] for sh in all_values
-            if _is_last_action_problem(sh["values"])
+            if _is_last_action_problem(sh.get("values", []))
         }
 
         app_context.set_open_problems(device_values_map)
