@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 initiated = []
 processed = defaultdict(list)
 
-
 DEVICES_IN_ROW = 8
 OPTIONS_IN_ROW = 3
 MESSAGE_SEPARATOR = " | "
+CUSTOM_ACTION_OPTION = "Свій варіант"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -81,7 +81,7 @@ def build_predefined_options_keyboard(dev_name, action):
     )
     # fmt: on
 
-    options += ["Свій варіант"]
+    options += [CUSTOM_ACTION_OPTION]
 
     while options:
         batch, options = (
@@ -158,12 +158,74 @@ async def handle_device_for_action_selected_button(msg, query):
     )
 
 
-async def handle_option_for_action_selected_button(msg, query):
+async def make_text_to_record(txt, update):
+    chat_id = update.message.chat_id
+    message_id = update.message.id
+    bot = update.get_bot()
+    user = update.message.from_user
+
+    author_str = f"'{user.username or user.full_name}'"
+
+    if not initiated:
+        await update.get_bot().send_message(
+            chat_id=update.message.chat_id,
+            text="Use /start to test this bot."
+        )
+        return
+
+    record = initiated.pop()
+
+    gcloud = GCloudService()
+    gcloud.commit_record(record["device"], record["action"], author_str, txt)
+
+    await bot.delete_message(chat_id, message_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"{record['time']}\n"
+             f"Прийнято запис від {author_str}\n"
+             f"для пристроя \"{record['device']}\":\n\n"
+             f"\"{record['action']} :: {txt}\" "
+    )
+
+
+async def make_button_to_record(txt, query, update):
+    user = query.from_user
+    author_str = f"'{user.username or user.full_name}'"
+
+    # Check if not initiated then quit
+
+    if not initiated:
+        await query.edit_message_text(text="Use /start to test this bot.")
+        return
+
+    # Writing record
+
+    record = initiated.pop()
+    gcloud = GCloudService()
+    gcloud.commit_record(record["device"], record["action"], author_str, txt)
+
+    # Responding to user
+
+    result_text = (
+        f"{record['time']}\n"
+        f"Прийнято запис від {author_str}\n"
+        f"для пристроя \"{record['device']}\":\n\n"
+        f"\"{record['action']} :: {txt}\" "
+    )
+
+    await query.edit_message_text(text=result_text)
+
+
+async def handle_option_for_action_selected_button(msg, query, update):
     option, action, device = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
 
-    if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
-        ...
+    if option == CUSTOM_ACTION_OPTION:
+        resp = f"Дія: \"{action}\". Пристрій: \"{device}\". Введіть опис:"
+        await query.edit_message_text(text=resp)
+        return
+
+    await make_button_to_record(option, query, update)
 
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -186,7 +248,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if cmd == MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value:
-        await handle_option_for_action_selected_button(msg, query)
+        await handle_option_for_action_selected_button(msg, query, update)
         return
 
     raise Exception(f"Unexpected command: '{cmd}'")
@@ -195,38 +257,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Parses the CallbackQuery and updates the message text."""
     txt = update.message.text
-    chat_id = update.message.chat_id
-    message_id = update.message.id
-    bot = update.get_bot()
-    user = update.message.from_user
-
-    author = user.username
-    author_str = f"@{author}"
-    if not author:
-        author = user.full_name
-        author_str = author
-    author_record = f"{author} ({user.id})"
-
-    if not initiated:
-        await update.get_bot().send_message(
-            chat_id=update.message.chat_id,
-            text="Use /start to test this bot."
-        )
-        return
-
-    record = initiated.pop()
-
-    gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], author_record, txt)
-
-    await bot.delete_message(chat_id, message_id)
-    await bot.send_message(
-        chat_id=chat_id,
-        text=f"{record['time']}\n"
-             f"Прийнято запис від {author_str}\n"
-             f"для пристроя \"{record['device']}\":\n\n"
-             f"\"{record['action']} :: {txt}\" "
-    )
+    await make_text_to_record(txt, update)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
