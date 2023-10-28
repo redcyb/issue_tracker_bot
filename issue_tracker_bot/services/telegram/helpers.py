@@ -146,7 +146,7 @@ async def make_text_to_record(txt, update):
     bot = update.get_bot()
     user = update.message.from_user
 
-    author_str = f"'{user.username or user.full_name}'"
+    author_str = user.username or user.full_name
 
     if not initiated:
         await update.get_bot().send_message(
@@ -164,7 +164,7 @@ async def make_text_to_record(txt, update):
     await bot.send_message(
         chat_id=chat_id,
         text=f"{record['time']}\n"
-             f"Прийнято запис від {author_str}\n"
+             f"Прийнято запис від '{author_str}'\n"
              f"для пристроя \"{record['device']}\":\n\n"
              f"\"{record['action']} :: {txt}\" "
     )
