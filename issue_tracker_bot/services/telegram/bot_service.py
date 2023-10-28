@@ -19,7 +19,7 @@ processed = defaultdict(list)
 
 
 DEVICES_IN_ROW = 8
-OPTIONS_IN_ROW = 2
+OPTIONS_IN_ROW = 3
 MESSAGE_SEPARATOR = " | "
 
 
@@ -31,7 +31,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [
             InlineKeyboardButton(Actions.PROBLEM.value, callback_data=f"{cmd} | {Actions.PROBLEM.value}"),
             InlineKeyboardButton(Actions.SOLUTION.value, callback_data=f"{cmd} | {Actions.SOLUTION.value}"),
-            InlineKeyboardButton(Actions.REPORT.value, callback_data=f"{cmd} | {Actions.REPORT.value}")
+            InlineKeyboardButton(Actions.STATUS.value, callback_data=f"{cmd} | {Actions.STATUS.value}")
         ],
     ]
 
@@ -69,9 +69,19 @@ def build_device_list_keyboard(devices_groups, action):
     return InlineKeyboardMarkup(keyboard)
 
 
-def build_predefined_options_keyboard(options, dev_name, action):
+def build_predefined_options_keyboard(dev_name, action):
     keyboard = []
     cmd = MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value
+
+    # fmt: off
+    options = (
+        app_context.problems_kinds
+        if action == Actions.PROBLEM.value else
+        app_context.solutions_kinds
+    )
+    # fmt: on
+
+    options += ["Свій варіант"]
 
     while options:
         batch, options = (
@@ -103,7 +113,7 @@ async def handle_initial_action_selected_button(msg, query):
             )
         return
 
-    if action in [Actions.PROBLEM.value, Actions.REPORT.value]:
+    if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
         reply_markup = build_device_list_keyboard(app_context.devices, msg)
         await query.edit_message_text(
             text=f"Дія: {msg}. Оберіть пристрій",
@@ -114,31 +124,46 @@ async def handle_initial_action_selected_button(msg, query):
     raise Exception(f"Unexpected initial action: '{msg}'")
 
 
+async def handle_status_action_selected(device, query):
+    gcloud = GCloudService()
+    report = gcloud.report_for_page(f"DEV_{device}")
+    resp = f"Статус для пристрою \"{device}\":"
+
+    if not report:
+        resp = f"\n\nНема записів для пристроя \"{device}\""
+    else:
+        resp += f"\n{report}"
+
+    await query.edit_message_text(text=resp)
+
+
 async def handle_device_for_action_selected_button(msg, query):
     action, device = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
 
-    if action in [Actions.PROBLEM.value, Actions.SOLUTION.value]:
-        initiated.append({
-            "action": action,
-            "device": device,
-            "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
-            "message": None
-        })
+    if action == Actions.STATUS.value:
+        await handle_status_action_selected(device, query)
+        return
 
-        resp = f"Дія: \"{action}\". Пристрій: \"{device}\". Введіть опис."
+    initiated.append({
+        "action": action,
+        "device": device,
+        "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
+        "message": None
+    })
 
-    else:
-        gcloud = GCloudService()
-        report = gcloud.report_for_page(f"DEV_{device}")
-        resp = f"Статус для пристрою \"{device}\":"
+    reply_markup = build_predefined_options_keyboard(device, action)
+    await query.edit_message_text(
+        text=f"Оберіть повідомлення із списку", reply_markup=reply_markup
+    )
 
-        if not report:
-            resp = f"\n\nНема записів для пристроя \"{device}\""
-        else:
-            resp += f"\n{report}"
 
-    await query.edit_message_text(text=resp)
+async def handle_option_for_action_selected_button(msg, query):
+    option, action, device = msg.split(MESSAGE_SEPARATOR)
+    action = action.strip().lower()
+
+    if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
+        ...
 
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -158,6 +183,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if cmd == MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value:
         await handle_device_for_action_selected_button(msg, query)
+        return
+
+    if cmd == MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value:
+        await handle_option_for_action_selected_button(msg, query)
         return
 
     raise Exception(f"Unexpected command: '{cmd}'")
