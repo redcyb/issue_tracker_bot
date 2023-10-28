@@ -17,9 +17,10 @@ initiated = []
 processed = defaultdict(list)
 
 DEVICES_IN_ROW = 8
-OPTIONS_IN_ROW = 3
-MESSAGE_SEPARATOR = " | "
+OPTIONS_IN_ROW = 2
+MESSAGE_SEPARATOR = "|"
 CUSTOM_ACTION_OPTION = "Свій варіант"
+MAX_OPTION_LEN = 30
 
 
 def filter_only_problems(devices_groups):
@@ -45,7 +46,11 @@ def build_device_list_keyboard(devices_groups, action):
             )
             keyboard.append([
                 InlineKeyboardButton(
-                    dev_name, callback_data=f"{cmd} | {action} | {dev_name}"
+                    dev_name, callback_data=(
+                        f"{cmd}{MESSAGE_SEPARATOR}"
+                        f"{action}{MESSAGE_SEPARATOR}"
+                        f"{dev_name}"
+                    )
                 ) for dev_name in batch
             ])
     return InlineKeyboardMarkup(keyboard)
@@ -72,7 +77,13 @@ def build_predefined_options_keyboard(dev_name, action):
         )
         keyboard.append([
             InlineKeyboardButton(
-                option, callback_data=f"{cmd} | {option} | {action} | {dev_name}"
+                option[:MAX_OPTION_LEN],
+                callback_data=(
+                    f"{cmd}{MESSAGE_SEPARATOR}"
+                    f"{option[:MAX_OPTION_LEN]}{MESSAGE_SEPARATOR}"
+                    f"{action}{MESSAGE_SEPARATOR}"
+                    f"{dev_name}"
+                )
             ) for option in batch
         ])
     return InlineKeyboardMarkup(keyboard)

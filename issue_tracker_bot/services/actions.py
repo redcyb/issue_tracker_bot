@@ -8,6 +8,6 @@ class Actions(Enum):
 
 
 class MenuCommandStates(Enum):
-    INITIAL_ACTION_SELECTED = "cmd_ias"
-    DEVICE_SELECTED_FOR_ACTION = "cmd_dsfa"
-    OPTION_SELECTED_FOR_ACTION = "cmd_osfa"
+    INITIAL_ACTION_SELECTED = "ia"
+    DEVICE_SELECTED_FOR_ACTION = "ds"
+    OPTION_SELECTED_FOR_ACTION = "os"
