@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes
 
 from issue_tracker_bot import settings
 from issue_tracker_bot.services.context import AppContext
-from issue_tracker_bot.services import GCloudService, Actions
+from issue_tracker_bot.services import GCloudService, Actions, MenuCommandStates
 
 GCloudService().enrich_app_context()
 app_context = AppContext()
@@ -19,15 +19,19 @@ processed = defaultdict(list)
 
 
 DEVICES_IN_ROW = 8
+OPTIONS_IN_ROW = 2
+MESSAGE_SEPARATOR = " | "
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a message with three inline buttons attached."""
+    cmd = MenuCommandStates.INITIAL_ACTION_SELECTED.value
+
     keyboard = [
         [
-            InlineKeyboardButton(Actions.PROBLEM.value, callback_data=Actions.PROBLEM.value),
-            InlineKeyboardButton(Actions.SOLUTION.value, callback_data=Actions.SOLUTION.value),
-            InlineKeyboardButton(Actions.REPORT.value, callback_data=Actions.REPORT.value)
+            InlineKeyboardButton(Actions.PROBLEM.value, callback_data=f"{cmd} | {Actions.PROBLEM.value}"),
+            InlineKeyboardButton(Actions.SOLUTION.value, callback_data=f"{cmd} | {Actions.SOLUTION.value}"),
+            InlineKeyboardButton(Actions.REPORT.value, callback_data=f"{cmd} | {Actions.REPORT.value}")
         ],
     ]
 
@@ -47,8 +51,9 @@ def filter_only_problems(devices_groups):
     return result
 
 
-def build_keyboard(devices_groups, action):
+def build_device_list_keyboard(devices_groups, action):
     keyboard = []
+    cmd = MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value
     for group, dev_names in devices_groups.items():
         keyboard.append([])
         while dev_names:
@@ -58,10 +63,82 @@ def build_keyboard(devices_groups, action):
             )
             keyboard.append([
                 InlineKeyboardButton(
-                    dev_name, callback_data=f"{action} | {dev_name}"
+                    dev_name, callback_data=f"{cmd} | {action} | {dev_name}"
                 ) for dev_name in batch
             ])
     return InlineKeyboardMarkup(keyboard)
+
+
+def build_predefined_options_keyboard(options, dev_name, action):
+    keyboard = []
+    cmd = MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value
+
+    while options:
+        batch, options = (
+            options[:OPTIONS_IN_ROW],
+            options[OPTIONS_IN_ROW:]
+        )
+        keyboard.append([
+            InlineKeyboardButton(
+                option, callback_data=f"{cmd} | {option} | {action} | {dev_name}"
+            ) for option in batch
+        ])
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def handle_initial_action_selected_button(msg, query):
+    action = msg.strip().lower()
+
+    if action == Actions.SOLUTION.value:
+        problematic_devices = filter_only_problems(app_context.devices)
+        reply_markup = build_device_list_keyboard(problematic_devices, action)
+        if problematic_devices:
+            await query.edit_message_text(
+                text=f"Дія: {msg}. Оберіть пристрій",
+                reply_markup=reply_markup
+            )
+        else:
+            await query.edit_message_text(
+                text=f"Не знайдено жодного пристрою із відкритою проблемою",
+            )
+        return
+
+    if action in [Actions.PROBLEM.value, Actions.REPORT.value]:
+        reply_markup = build_device_list_keyboard(app_context.devices, msg)
+        await query.edit_message_text(
+            text=f"Дія: {msg}. Оберіть пристрій",
+            reply_markup=reply_markup
+        )
+        return
+
+    raise Exception(f"Unexpected initial action: '{msg}'")
+
+
+async def handle_device_for_action_selected_button(msg, query):
+    action, device = msg.split(MESSAGE_SEPARATOR)
+    action = action.strip().lower()
+
+    if action in [Actions.PROBLEM.value, Actions.SOLUTION.value]:
+        initiated.append({
+            "action": action,
+            "device": device,
+            "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
+            "message": None
+        })
+
+        resp = f"Дія: \"{action}\". Пристрій: \"{device}\". Введіть опис."
+
+    else:
+        gcloud = GCloudService()
+        report = gcloud.report_for_page(f"DEV_{device}")
+        resp = f"Статус для пристрою \"{device}\":"
+
+        if not report:
+            resp = f"\n\nНема записів для пристроя \"{device}\""
+        else:
+            resp += f"\n{report}"
+
+    await query.edit_message_text(text=resp)
 
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -72,54 +149,18 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     await query.answer()
 
-    msg = query.data.strip()
-    action = msg.lower()
+    initial_msg = query.data.strip()
+    cmd, msg = initial_msg.split(MESSAGE_SEPARATOR, 1)
 
-    if action == Actions.SOLUTION.value:
-        problematic_devices = filter_only_problems(app_context.devices)
-        reply_markup = build_keyboard(problematic_devices, action)
-        if problematic_devices:
-            await query.edit_message_text(
-                text=f"Дія: {msg}. Оберіть пристрій",
-                reply_markup=reply_markup
-            )
-        else:
-            await query.edit_message_text(
-                text=f"Не знайдено жодного пристрою із відкритою проблемою",
-            )
+    if cmd == MenuCommandStates.INITIAL_ACTION_SELECTED.value:
+        await handle_initial_action_selected_button(msg, query)
+        return
 
-    elif action in [Actions.PROBLEM.value, Actions.REPORT.value]:
-        reply_markup = build_keyboard(app_context.devices, msg)
-        await query.edit_message_text(
-            text=f"Дія: {msg}. Оберіть пристрій",
-            reply_markup=reply_markup
-        )
+    if cmd == MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value:
+        await handle_device_for_action_selected_button(msg, query)
+        return
 
-    else:
-        action, device = msg.split(" | ")
-        action = action.strip().lower()
-
-        if action in [Actions.PROBLEM.value, Actions.SOLUTION.value]:
-            initiated.append({
-                "action": action,
-                "device": device,
-                "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
-                "message": None
-            })
-
-            resp = f"Дія: \"{action}\". Устройство: \"{device}\". Введите описание."
-
-        else:
-            gcloud = GCloudService()
-            report = gcloud.report_for_page(f"DEV_{device}")
-            resp = f"Статус для пристрою \"{device}\":"
-
-            if not report:
-                resp = f"\n\nНема записів для пристроя \"{device}\""
-            else:
-                resp += f"\n{report}"
-
-        await query.edit_message_text(text=resp)
+    raise Exception(f"Unexpected command: '{cmd}'")
 
 
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
