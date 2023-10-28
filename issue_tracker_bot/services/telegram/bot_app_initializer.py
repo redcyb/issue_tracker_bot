@@ -29,10 +29,10 @@ def create_application():
         .token(settings.TELEGRAM_TOKEN).build()
     )
 
-    application.add_handler(CommandHandler("help", srv.help_command))
-    application.add_handler(CommandHandler("start", srv.start))
-    application.add_handler(MessageHandler(None, srv.text))
-    application.add_handler(CallbackQueryHandler(srv.button))
+    application.add_handler(CommandHandler("help", srv.handle_help))
+    application.add_handler(CommandHandler("start", srv.handle_start))
+    application.add_handler(MessageHandler(None, srv.handle_text))
+    application.add_handler(CallbackQueryHandler(srv.handle_button))
 
     return application
 
