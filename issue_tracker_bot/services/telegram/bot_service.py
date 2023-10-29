@@ -43,15 +43,15 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     cmd, msg = initial_msg.split(H.MESSAGE_SEPARATOR, 1)
 
     if cmd == H.MenuCommandStates.INITIAL_ACTION_SELECTED.value:
-        await H.process_initial_action_selected_button(msg, query)
+        await H.process_initial_action_selected_button(msg, query=query)
         return
 
     if cmd == H.MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value:
-        await H.process_device_for_action_selected_button(msg, query)
+        await H.process_device_for_action_selected_button(msg, query=query)
         return
 
     if cmd == H.MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value:
-        await H.process_option_for_action_selected_button(msg, query, update)
+        await H.process_option_for_action_selected_button(msg, query=query, update=update)
         return
 
     raise Exception(f"Unexpected command: '{cmd}'")
@@ -65,4 +65,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Displays info on how to use the bot."""
-    await update.message.reply_text("Use /start to test this bot.")
+    await update.message.reply_text(H.DEFAULT_HELP_MESSAGE)
+
+
+async def handle_init_problem_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await H.process_initial_action_selected_button(H.Actions.PROBLEM.value, update=update)
+
+
+async def handle_init_solution_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await H.process_initial_action_selected_button(H.Actions.SOLUTION.value, update=update)
+
+
+async def handle_init_status_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await H.process_initial_action_selected_button(H.Actions.STATUS.value, update=update)
