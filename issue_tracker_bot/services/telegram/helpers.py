@@ -13,7 +13,7 @@ app_context = AppContext()
 
 logger = logging.getLogger(__name__)
 
-initiated = []
+initiated = {}
 processed = defaultdict(list)
 
 DEVICES_IN_ROW = 8
@@ -165,12 +165,13 @@ async def process_status_action_selected(device, query):
 async def process_device_for_action_selected_button(msg, query):
     action, device = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
+    user_id = query.from_user.id
 
     if action == Actions.STATUS.value:
         await process_status_action_selected(device, query)
         return
 
-    initiated.append({
+    initiated[user_id] = ({
         "action": action,
         "device": device,
         "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
@@ -188,17 +189,18 @@ async def make_text_to_record(txt, update):
     message_id = update.message.id
     bot = update.get_bot()
     user = update.message.from_user
+    user_id = user.id
 
     author_str = user.username or user.full_name
 
-    if not initiated:
+    if not initiated.get(user_id):
         await update.get_bot().send_message(
             chat_id=update.message.chat_id,
             text=DEFAULT_HELP_MESSAGE
         )
         return
 
-    record = initiated.pop()
+    record = initiated.pop(user_id)
 
     gcloud = GCloudService()
     gcloud.commit_record(record["device"], record["action"], author_str, txt)
@@ -215,6 +217,7 @@ async def make_text_to_record(txt, update):
 
 async def make_button_to_record(txt, query, update):
     user = query.from_user
+    user_id = user.id
     author_str = f"'{user.username or user.full_name}'"
 
     # Check if not initiated then quit
@@ -225,7 +228,7 @@ async def make_button_to_record(txt, query, update):
 
     # Writing record
 
-    record = initiated.pop()
+    record = initiated.pop(user_id)
     gcloud = GCloudService()
     gcloud.commit_record(record["device"], record["action"], author_str, txt)
 
