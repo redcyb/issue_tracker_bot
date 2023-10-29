@@ -22,6 +22,14 @@ MESSAGE_SEPARATOR = "|"
 CUSTOM_ACTION_OPTION = "Свій варіант"
 MAX_OPTION_LEN = 30
 
+DEFAULT_HELP_MESSAGE = (
+    "Команда /start починає спілкування з ботом.\n"
+    "Альтернативно можна одразу почати із доповіді\n"
+    "про проблему із пристроєм командою /problem,\n"
+    "про рішення проблеми із пристроєм командою /solution.\n"
+    "Для отримання статусу пристрою можна використати команду /status."
+)
+
 
 def filter_only_problems(devices_groups):
     result = defaultdict(list)
@@ -89,28 +97,52 @@ def build_predefined_options_keyboard(dev_name, action):
     return InlineKeyboardMarkup(keyboard)
 
 
-async def process_initial_action_selected_button(msg, query):
+async def make_response(text, reply_markup, query=None, update=None):
+    kwargs = {"text": text}
+
+    if reply_markup:
+        kwargs["reply_markup"] = reply_markup
+
+    if query:
+        await query.edit_message_text(**kwargs)
+        return
+
+    if update:
+        await update.message.reply_text(**kwargs)
+        return
+
+    raise Exception("Either query or update must be provided.")
+
+
+async def process_initial_action_selected_button(msg, query=None, update=None):
     action = msg.strip().lower()
 
     if action == Actions.SOLUTION.value:
         problematic_devices = filter_only_problems(app_context.devices)
         reply_markup = build_device_list_keyboard(problematic_devices, action)
         if problematic_devices:
-            await query.edit_message_text(
+            await make_response(
                 text=f"Дія: {msg}. Оберіть пристрій",
-                reply_markup=reply_markup
+                reply_markup=reply_markup,
+                query=query,
+                update=update
             )
         else:
-            await query.edit_message_text(
+            await make_response(
                 text=f"Не знайдено жодного пристрою із відкритою проблемою",
+                reply_markup=None,
+                query=query,
+                update=update
             )
         return
 
     if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
         reply_markup = build_device_list_keyboard(app_context.devices, msg)
-        await query.edit_message_text(
+        await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
+            query=query,
+            update=update
         )
         return
 
@@ -162,7 +194,7 @@ async def make_text_to_record(txt, update):
     if not initiated:
         await update.get_bot().send_message(
             chat_id=update.message.chat_id,
-            text="Use /start to test this bot."
+            text=DEFAULT_HELP_MESSAGE
         )
         return
 
@@ -188,7 +220,7 @@ async def make_button_to_record(txt, query, update):
     # Check if not initiated then quit
 
     if not initiated:
-        await query.edit_message_text(text="Use /start to test this bot.")
+        await query.edit_message_text(text=DEFAULT_HELP_MESSAGE)
         return
 
     # Writing record
