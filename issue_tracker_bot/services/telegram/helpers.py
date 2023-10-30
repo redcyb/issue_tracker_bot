@@ -20,7 +20,7 @@ DEVICES_IN_ROW = 8
 OPTIONS_IN_ROW = 2
 MESSAGE_SEPARATOR = "|"
 CUSTOM_ACTION_OPTION = "Свій варіант"
-MAX_OPTION_LEN = 30
+MAX_OPTION_BYTES_LEN = 41
 
 DEFAULT_HELP_MESSAGE = (
     "Команда /start починає спілкування з ботом.\n"
@@ -78,6 +78,13 @@ def build_predefined_options_keyboard(dev_name, action):
 
     options += [CUSTOM_ACTION_OPTION]
 
+    def _get_option(_option):
+        _option_b = _option.encode()[:MAX_OPTION_BYTES_LEN]
+        try:
+            return _option_b.decode()
+        except UnicodeDecodeError:
+            return _option_b[:-1].decode()
+
     while options:
         batch, options = (
             options[:OPTIONS_IN_ROW],
@@ -85,10 +92,10 @@ def build_predefined_options_keyboard(dev_name, action):
         )
         keyboard.append([
             InlineKeyboardButton(
-                option[:MAX_OPTION_LEN],
+                _get_option(option),
                 callback_data=(
                     f"{cmd}{MESSAGE_SEPARATOR}"
-                    f"{option[:MAX_OPTION_LEN]}{MESSAGE_SEPARATOR}"
+                    f"{_get_option(option)}{MESSAGE_SEPARATOR}"
                     f"{action}{MESSAGE_SEPARATOR}"
                     f"{dev_name}"
                 )
