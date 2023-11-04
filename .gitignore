@@ -151,3 +151,5 @@ dist
 *token*.json
 secrets
 .python-version
+
+.docker
