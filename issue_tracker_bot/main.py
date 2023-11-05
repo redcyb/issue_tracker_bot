@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request
-
+from fastapi import FastAPI
+from fastapi import Request
 from telegram import Update
 
 from issue_tracker_bot.services.repository import database
