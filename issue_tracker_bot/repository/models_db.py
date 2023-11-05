@@ -1,9 +1,13 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import ChoiceType
 
-from issue_tracker_bot.services.repository import commons
-from issue_tracker_bot.services.repository import database as db
+from issue_tracker_bot.repository import commons
+from issue_tracker_bot.repository import database as db
 
 
 ROLES_CHOICES = [(f.value, f.value) for f in list(commons.Roles)]

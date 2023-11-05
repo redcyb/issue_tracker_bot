@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 
-from issue_tracker_bot.services.repository import database
-from issue_tracker_bot.services.repository import models_db as md, models_pyd as mp
+from issue_tracker_bot.repository import database
+from issue_tracker_bot.repository import models_db as md
+from issue_tracker_bot.repository import models_pyd as mp
 
 
 @database.inject_db_session
