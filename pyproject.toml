@@ -22,8 +22,9 @@ python-telegram-bot = {extras = ["all"], version = "^20.3"}
 fastapi = "^0.103.1"
 uvicorn = {version = "0.22.0", extras = ["standard"]}
 psycopg2 = "^2.9.9"
-flask-sqlalchemy = "^3.0.5"
-flask-migrate = "^4.0.5"
+sqlalchemy = "^2.0.23"
+alembic = "^1.12.1"
+sqlalchemy-utils = "^0.41.1"
 
 [tool.poetry.group.dev]
 

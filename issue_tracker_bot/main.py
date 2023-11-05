@@ -2,7 +2,10 @@ from fastapi import FastAPI, Request
 
 from telegram import Update
 
+from issue_tracker_bot.services.repository import database
 from issue_tracker_bot.services.telegram.bot_app_initializer import create_application
+
+database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
 

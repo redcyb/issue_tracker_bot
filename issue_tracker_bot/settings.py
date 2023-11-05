@@ -8,6 +8,7 @@ dotenv.load_dotenv()
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"]
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 TG_READ_TIMEOUT = 30
 TG_WRITE_TIMEOUT = 30
