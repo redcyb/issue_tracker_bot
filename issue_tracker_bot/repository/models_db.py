@@ -29,8 +29,8 @@ class Device(db.Base):
     __tablename__ = "devices"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    group = Column(String)
+    name = Column(String, nullable=False)
+    group = Column(String, nullable=False)
     serial_number = Column(String)
     created_at = Column(DateTime, nullable=False)
 

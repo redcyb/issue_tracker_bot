@@ -1,3 +1,4 @@
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import Session
 
 from issue_tracker_bot.repository import database
@@ -51,3 +52,43 @@ def get_user_by_name(db: Session, name: str):
 @database.inject_db_session
 def get_users(db: Session, skip: int = 0, limit: int = 1000):
     return db.query(md.User).offset(skip).limit(limit).all()
+
+
+@database.inject_db_session
+def get_all_devices(db: Session):
+    return (
+        db.query(md.Device)
+        .order_by(md.Device.group.asc())
+        .group_by(md.Device.group)
+        .all()
+    )
+
+
+@database.inject_db_session
+def get_records_for_device(db: Session, device_id: int, limit: int = 10):
+    return (
+        db.query(md.Record)
+        .where(md.Record.device_id == device_id)
+        .order_by(md.Record.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+@database.inject_db_session
+def get_devices_with_open_problems(db: Session):
+    sub = (
+        db.query(md.Record)
+        .filter(md.Record.device_id == md.Device.id)
+        .order_by(md.Record.created_at.desc())
+        .limit(1)
+        .subquery()
+        .lateral()
+    )
+
+    return (
+        db.query(md.Device)
+        .outerjoin(sub)
+        .filter_by(kind="problem")
+        .options(contains_eager(md.Device.records, alias=sub))
+    ).all()
