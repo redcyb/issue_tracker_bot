@@ -1,12 +1,9 @@
-from typing import Union
-
-from pydantic import BaseModel
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import Session
 
 from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import models_db as md
-from issue_tracker_bot.repository import models_pyd as mp
+from issue_tracker_bot.repository.database import pydantic_or_dict
 
 
 @database.inject_db_session
@@ -14,10 +11,10 @@ def get_user(db: Session, obj_id: int):
     return db.query(md.User).filter(md.User.id == obj_id).first()
 
 
+@pydantic_or_dict
 @database.inject_db_session
-def create_user(db: Session, data_obj: Union[mp.User, dict]):
-    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
-    db_object = md.User(**data_dict)
+def create_user(db: Session, data_obj: dict):
+    db_object = md.User(**data_obj)
 
     db.add(db_object)
     db.commit()
@@ -26,10 +23,10 @@ def create_user(db: Session, data_obj: Union[mp.User, dict]):
     return db_object
 
 
+@pydantic_or_dict
 @database.inject_db_session
-def create_device(db: Session, data_obj: Union[mp.DeviceCreate, dict]):
-    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
-    db_object = md.Device(**data_dict)
+def create_device(db: Session, data_obj: dict):
+    db_object = md.Device(**data_obj)
 
     db.add(db_object)
     db.commit()
@@ -38,10 +35,10 @@ def create_device(db: Session, data_obj: Union[mp.DeviceCreate, dict]):
     return db_object
 
 
+@pydantic_or_dict
 @database.inject_db_session
-def create_record(db: Session, data_obj: Union[mp.RecordCreate, dict]):
-    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
-    db_object = md.Record(**data_dict)
+def create_record(db: Session, data_obj: dict):
+    db_object = md.Record(**data_obj)
 
     db.add(db_object)
     db.commit()

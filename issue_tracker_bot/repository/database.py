@@ -1,3 +1,6 @@
+from typing import Union
+
+from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -25,5 +28,18 @@ def inject_db_session(f):
         This injects a database Session object in function args
         """
         return f(next(get_db()), *args, **kwargs)
+
+    return wrapper
+
+
+def pydantic_or_dict(f):
+    def wrapper(data_obj: Union[BaseModel, dict], *args, **kwargs):
+        """
+        This converts incoming data_obj to dict
+        """
+        data_dict = (
+            data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
+        )
+        return f(data_dict, *args, **kwargs)
 
     return wrapper
