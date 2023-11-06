@@ -34,7 +34,7 @@ def create_device(db: Session, device: mp.Device):
 
 
 @database.inject_db_session
-def create_record(db: Session, record: mp.Record):
+def create_record(db: Session, record: mp.RecordCreate):
     db_object = md.Record(**record.model_dump())
 
     db.add(db_object)

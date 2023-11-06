@@ -28,7 +28,7 @@ class User(db.Base):
 class Device(db.Base):
     __tablename__ = "devices"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, nullable=False)
     group = Column(String, nullable=False)
     serial_number = Column(String)
@@ -40,13 +40,21 @@ class Device(db.Base):
 class Record(db.Base):
     __tablename__ = "records"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     text = Column(String)
     kind = Column(ChoiceType(KINDS_CHOICES))
     created_at = Column(DateTime, nullable=False, index=True)
 
-    reporter_id = Column(Integer, ForeignKey("users.id"), index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     reporter = relationship("User", back_populates="records")
 
-    device_id = Column(Integer, ForeignKey("devices.id"), index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), index=True, nullable=False)
     device = relationship("Device", back_populates="records")
+
+
+class PredefinedMessage(db.Base):
+    __tablename__ = "predefined_messages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    text = Column(String, nullable=False)
+    kind = Column(ChoiceType(KINDS_CHOICES), nullable=False)

@@ -29,7 +29,7 @@ class User(UserBase):
 
 
 class DeviceBase(BaseModel):
-    id: int
+    id: Optional[int] = None
     name: str
     group: str
     serial_number: Optional[str] = None
@@ -42,7 +42,7 @@ class Device(DeviceBase):
 
 
 class RecordBase(BaseModel):
-    id: int
+    id: Optional[int] = None
     reporter_id: int
     device_id: int
     text: str
@@ -56,6 +56,16 @@ class RecordBase(BaseModel):
             return v
         return v.value
 
+    class Config:
+        from_attributes = True
+
+
+class RecordLight(RecordBase):
+    class Config:
+        from_attributes = True
+
+
+class RecordCreate(RecordBase):
     class Config:
         from_attributes = True
 

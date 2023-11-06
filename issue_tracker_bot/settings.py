@@ -6,16 +6,17 @@ import dotenv
 
 dotenv.load_dotenv()
 
+ENV = os.environ.get("ENV", "local")
+
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"]
-DATABASE_URL = os.environ["DATABASE_URL"]
+DATABASE_URL = os.environ["DATABASE_URL" if ENV != "test" else "DATABASE_TEST_URL"]
 
 TG_READ_TIMEOUT = 30
 TG_WRITE_TIMEOUT = 30
 
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-ENV = os.environ.get("ENV", "local")
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 ROOT_PATH = Path(__file__).absolute().parent.parent

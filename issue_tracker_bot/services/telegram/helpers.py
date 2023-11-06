@@ -2,13 +2,15 @@ import datetime
 import logging
 from collections import defaultdict
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardMarkup
 
 from issue_tracker_bot import settings
-from issue_tracker_bot.services import GCloudService, Actions, MenuCommandStates
+from issue_tracker_bot.repository import operations as R
+from issue_tracker_bot.services import Actions
+from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 
-GCloudService().enrich_app_context()
 app_context = AppContext()
 
 logger = logging.getLogger(__name__)
@@ -48,19 +50,20 @@ def build_device_list_keyboard(devices_groups, action):
     for group, dev_names in devices_groups.items():
         keyboard.append([])
         while dev_names:
-            batch, dev_names = (
-                dev_names[:DEVICES_IN_ROW],
-                dev_names[DEVICES_IN_ROW:]
-            )
-            keyboard.append([
-                InlineKeyboardButton(
-                    dev_name, callback_data=(
-                        f"{cmd}{MESSAGE_SEPARATOR}"
-                        f"{action}{MESSAGE_SEPARATOR}"
-                        f"{dev_name}"
+            batch, dev_names = (dev_names[:DEVICES_IN_ROW], dev_names[DEVICES_IN_ROW:])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        dev_name,
+                        callback_data=(
+                            f"{cmd}{MESSAGE_SEPARATOR}"
+                            f"{action}{MESSAGE_SEPARATOR}"
+                            f"{dev_name}"
+                        ),
                     )
-                ) for dev_name in batch
-            ])
+                    for dev_name in batch
+                ]
+            )
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -86,21 +89,21 @@ def build_predefined_options_keyboard(dev_name, action):
             return _option_b[:-1].decode()
 
     while options:
-        batch, options = (
-            options[:OPTIONS_IN_ROW],
-            options[OPTIONS_IN_ROW:]
-        )
-        keyboard.append([
-            InlineKeyboardButton(
-                _get_option(option),
-                callback_data=(
-                    f"{cmd}{MESSAGE_SEPARATOR}"
-                    f"{_get_option(option)}{MESSAGE_SEPARATOR}"
-                    f"{action}{MESSAGE_SEPARATOR}"
-                    f"{dev_name}"
+        batch, options = (options[:OPTIONS_IN_ROW], options[OPTIONS_IN_ROW:])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    _get_option(option),
+                    callback_data=(
+                        f"{cmd}{MESSAGE_SEPARATOR}"
+                        f"{_get_option(option)}{MESSAGE_SEPARATOR}"
+                        f"{action}{MESSAGE_SEPARATOR}"
+                        f"{dev_name}"
+                    ),
                 )
-            ) for option in batch
-        ])
+                for option in batch
+            ]
+        )
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -132,14 +135,14 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
                 text=f"Дія: {msg}. Оберіть пристрій",
                 reply_markup=reply_markup,
                 query=query,
-                update=update
+                update=update,
             )
         else:
             await make_response(
                 text=f"Не знайдено жодного пристрою із відкритою проблемою",
                 reply_markup=None,
                 query=query,
-                update=update
+                update=update,
             )
         return
 
@@ -149,7 +152,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
             text=f"Дія: {msg}. Оберіть пристрій",
             reply_markup=reply_markup,
             query=query,
-            update=update
+            update=update,
         )
         return
 
@@ -157,12 +160,15 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
 
 
 async def process_status_action_selected(device, query):
-    gcloud = GCloudService()
-    report = gcloud.report_for_page(f"DEV_{device}")
-    resp = f"Статус для пристрою \"{device}\":"
+    # gcloud = GCloudService()
+    # report = gcloud.report_for_page(f"DEV_{device}")
+
+    report = R.get_device_status()
+
+    resp = f'Статус для пристрою "{device}":'
 
     if not report:
-        resp = f"\n\nНема записів для пристроя \"{device}\""
+        resp = f'\n\nНема записів для пристроя "{device}"'
     else:
         resp += f"\n{report}"
 
@@ -178,12 +184,12 @@ async def process_device_for_action_selected_button(msg, query):
         await process_status_action_selected(device, query)
         return
 
-    initiated[user_id] = ({
+    initiated[user_id] = {
         "action": action,
         "device": device,
         "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
-        "message": None
-    })
+        "message": None,
+    }
 
     reply_markup = build_predefined_options_keyboard(device, action)
     await query.edit_message_text(
@@ -202,8 +208,7 @@ async def make_text_to_record(txt, update):
 
     if not initiated.get(user_id):
         await update.get_bot().send_message(
-            chat_id=update.message.chat_id,
-            text=DEFAULT_HELP_MESSAGE
+            chat_id=update.message.chat_id, text=DEFAULT_HELP_MESSAGE
         )
         return
 
@@ -216,9 +221,9 @@ async def make_text_to_record(txt, update):
     await bot.send_message(
         chat_id=chat_id,
         text=f"{record['time']}\n"
-             f"Прийнято запис від '{author_str}'\n"
-             f"для пристроя \"{record['device']}\":\n\n"
-             f"\"{record['action']} :: {txt}\" "
+        f"Прийнято запис від '{author_str}'\n"
+        f"для пристроя \"{record['device']}\":\n\n"
+        f"\"{record['action']} :: {txt}\" ",
     )
 
 
@@ -256,7 +261,7 @@ async def process_option_for_action_selected_button(msg, query, update):
     action = action.strip().lower()
 
     if option == CUSTOM_ACTION_OPTION:
-        resp = f"Дія: \"{action}\". Пристрій: \"{device}\". Введіть опис:"
+        resp = f'Дія: "{action}". Пристрій: "{device}". Введіть опис:'
         await query.edit_message_text(text=resp)
         return
 
