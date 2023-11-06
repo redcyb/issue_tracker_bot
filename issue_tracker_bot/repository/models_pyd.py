@@ -1,17 +1,22 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from typing import List
 from typing import Optional
 from typing import Union
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import field_validator
+from sqlalchemy_utils.types import Choice
 
 
 class UserBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
     id: int
-    name: Optional[str] = None
-    role: Union[str, Any] = None
+    name: str
+    role: Union[str, Choice, Enum]
     records: List = []
     created_at: datetime
 
@@ -24,8 +29,12 @@ class UserBase(BaseModel):
 
 
 class User(UserBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserCreate(UserBase):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+    created_at: Optional[datetime] = None
 
 
 class DeviceBase(BaseModel):
@@ -37,11 +46,12 @@ class DeviceBase(BaseModel):
 
 
 class Device(DeviceBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecordBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: Optional[int] = None
     reporter_id: int
     device_id: int
@@ -56,23 +66,16 @@ class RecordBase(BaseModel):
             return v
         return v.value
 
-    class Config:
-        from_attributes = True
-
 
 class RecordLight(RecordBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecordCreate(RecordBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Record(RecordBase):
+    model_config = ConfigDict(from_attributes=True)
     reporter: Optional[User] = None
     device: Optional[Device] = None
-
-    class Config:
-        from_attributes = True

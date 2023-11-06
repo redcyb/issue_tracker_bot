@@ -1,3 +1,6 @@
+from typing import Union
+
+from pydantic import BaseModel
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import Session
 
@@ -12,8 +15,9 @@ def get_user(db: Session, user_id: int):
 
 
 @database.inject_db_session
-def create_user(db: Session, user: mp.User):
-    db_object = md.User(**user.model_dump())
+def create_user(db: Session, data_obj: Union[mp.User, dict]):
+    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
+    db_object = md.User(**data_dict)
 
     db.add(db_object)
     db.commit()
