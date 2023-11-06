@@ -55,13 +55,13 @@ class DeviceCreate(DeviceBase):
 
 
 class RecordBase(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     id: Optional[int] = None
     reporter_id: int
     device_id: int
     text: str
-    kind: Union[str, Any]
+    kind: Union[str, Choice, Enum]
     created_at: datetime
 
     @field_validator("kind")
@@ -77,7 +77,8 @@ class RecordLight(RecordBase):
 
 
 class RecordCreate(RecordBase):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+    created_at: Optional[datetime] = None
 
 
 class Record(RecordBase):

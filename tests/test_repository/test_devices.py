@@ -5,7 +5,7 @@ from issue_tracker_bot.repository.operations import create_device
 from tests.test_repository.common import DBTestCase
 
 
-class UserModelTest(DBTestCase):
+class DeviceModelTest(DBTestCase):
     def test_device_created_with_all_required_fields(self):
         device = create_device(models_pyd.DeviceCreate(name="foo", group="bar"))
         self.assertIsInstance(device.id, int)
