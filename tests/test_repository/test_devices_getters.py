@@ -1,25 +1,23 @@
-from issue_tracker_bot.repository import commons
-from issue_tracker_bot.repository import models_pyd as mp
 from issue_tracker_bot.repository.operations import create_device
 from issue_tracker_bot.repository.operations import create_record
 from issue_tracker_bot.repository.operations import create_user
 from issue_tracker_bot.repository.operations import get_devices_with_open_problems
 from tests.test_repository.common import DBTestCase
+from tests.test_repository.factories import DeviceFactory
 from tests.test_repository.factories import ProblemRecordFactory
+from tests.test_repository.factories import ReporterFactory
 from tests.test_repository.factories import SolutionRecordFactory
 
 
 class DeviceGetterModelTest(DBTestCase):
     def test_get_devices_with_open_problems(self):
-        user = create_user(mp.UserCreate(id=1, name="foo", role=commons.Roles.reporter))
+        user = create_user(ReporterFactory())
 
         # Empty devices
-        create_device(mp.DeviceCreate(name="empty1", group="bar1"))
-        create_device(mp.DeviceCreate(name="empty2", group="bar2"))
+        create_device(DeviceFactory())
+        create_device(DeviceFactory())
 
-        device_without_open_problem1 = create_device(
-            mp.DeviceCreate(name="closed1", group="bar1")
-        )
+        device_without_open_problem1 = create_device(DeviceFactory())
         create_record(
             ProblemRecordFactory(
                 reporter_id=user.id,
@@ -34,9 +32,7 @@ class DeviceGetterModelTest(DBTestCase):
         )
 
         # Devices with resolved problems
-        device_without_open_problem2 = create_device(
-            mp.DeviceCreate(name="closed2", group="bar2")
-        )
+        device_without_open_problem2 = create_device(DeviceFactory())
         create_record(
             ProblemRecordFactory(
                 reporter_id=user.id,
@@ -51,9 +47,7 @@ class DeviceGetterModelTest(DBTestCase):
         )
 
         # Devices with open problems
-        device_with_open_problem1 = create_device(
-            mp.DeviceCreate(name="open1", group="bar1")
-        )
+        device_with_open_problem1 = create_device(DeviceFactory())
         create_record(
             ProblemRecordFactory(
                 reporter_id=user.id,
@@ -73,9 +67,7 @@ class DeviceGetterModelTest(DBTestCase):
             )
         )
 
-        device_with_open_problem2 = create_device(
-            mp.DeviceCreate(name="open2", group="bar2")
-        )
+        device_with_open_problem2 = create_device(DeviceFactory())
         create_record(
             ProblemRecordFactory(
                 reporter_id=user.id,
