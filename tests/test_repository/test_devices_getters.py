@@ -5,6 +5,8 @@ from issue_tracker_bot.repository.operations import create_record
 from issue_tracker_bot.repository.operations import create_user
 from issue_tracker_bot.repository.operations import get_devices_with_open_problems
 from tests.test_repository.common import DBTestCase
+from tests.test_repository.factories import ProblemRecordFactory
+from tests.test_repository.factories import SolutionRecordFactory
 
 
 class DeviceGetterModelTest(DBTestCase):
@@ -19,19 +21,15 @@ class DeviceGetterModelTest(DBTestCase):
             mp.DeviceCreate(name="closed1", group="bar1")
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_without_open_problem1.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
         create_record(
-            mp.RecordCreate(
+            SolutionRecordFactory(
                 reporter_id=user.id,
                 device_id=device_without_open_problem1.id,
-                text="solution",
-                kind=commons.ReportKinds.solution,
             )
         )
 
@@ -40,19 +38,15 @@ class DeviceGetterModelTest(DBTestCase):
             mp.DeviceCreate(name="closed2", group="bar2")
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_without_open_problem2.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
         create_record(
-            mp.RecordCreate(
+            SolutionRecordFactory(
                 reporter_id=user.id,
                 device_id=device_without_open_problem2.id,
-                text="solution",
-                kind=commons.ReportKinds.solution,
             )
         )
 
@@ -61,27 +55,21 @@ class DeviceGetterModelTest(DBTestCase):
             mp.DeviceCreate(name="open1", group="bar1")
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem1.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
         create_record(
-            mp.RecordCreate(
+            SolutionRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem1.id,
-                text="solution",
-                kind=commons.ReportKinds.solution,
             )
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem1.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
 
@@ -89,27 +77,21 @@ class DeviceGetterModelTest(DBTestCase):
             mp.DeviceCreate(name="open2", group="bar2")
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem2.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
         create_record(
-            mp.RecordCreate(
+            SolutionRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem2.id,
-                text="solution",
-                kind=commons.ReportKinds.solution,
             )
         )
         create_record(
-            mp.RecordCreate(
+            ProblemRecordFactory(
                 reporter_id=user.id,
                 device_id=device_with_open_problem2.id,
-                text="problem",
-                kind=commons.ReportKinds.problem,
             )
         )
 

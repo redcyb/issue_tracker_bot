@@ -27,7 +27,7 @@ def create_user(db: Session, data_obj: Union[mp.User, dict]):
 
 
 @database.inject_db_session
-def create_device(db: Session, data_obj: mp.DeviceCreate):
+def create_device(db: Session, data_obj: Union[mp.DeviceCreate, dict]):
     data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
     db_object = md.Device(**data_dict)
 
@@ -39,8 +39,9 @@ def create_device(db: Session, data_obj: mp.DeviceCreate):
 
 
 @database.inject_db_session
-def create_record(db: Session, record: mp.RecordCreate):
-    db_object = md.Record(**record.model_dump())
+def create_record(db: Session, data_obj: Union[mp.RecordCreate, dict]):
+    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
+    db_object = md.Record(**data_dict)
 
     db.add(db_object)
     db.commit()
