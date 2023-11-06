@@ -10,8 +10,8 @@ from issue_tracker_bot.repository import models_pyd as mp
 
 
 @database.inject_db_session
-def get_user(db: Session, user_id: int):
-    return db.query(md.User).filter(md.User.id == user_id).first()
+def get_user(db: Session, obj_id: int):
+    return db.query(md.User).filter(md.User.id == obj_id).first()
 
 
 @database.inject_db_session
@@ -27,8 +27,9 @@ def create_user(db: Session, data_obj: Union[mp.User, dict]):
 
 
 @database.inject_db_session
-def create_device(db: Session, device: mp.Device):
-    db_object = md.Device(**device.model_dump())
+def create_device(db: Session, data_obj: mp.DeviceCreate):
+    data_dict = data_obj.model_dump() if isinstance(data_obj, BaseModel) else data_obj
+    db_object = md.Device(**data_dict)
 
     db.add(db_object)
     db.commit()
@@ -59,6 +60,11 @@ def get_users(db: Session, skip: int = 0, limit: int = 1000):
 
 
 @database.inject_db_session
+def get_device(db: Session, obj_id: int):
+    return db.query(md.Device).filter(md.Device.id == obj_id).first()
+
+
+@database.inject_db_session
 def get_all_devices(db: Session):
     return (
         db.query(md.Device)
@@ -69,10 +75,10 @@ def get_all_devices(db: Session):
 
 
 @database.inject_db_session
-def get_records_for_device(db: Session, device_id: int, limit: int = 10):
+def get_records_for_device(db: Session, obj_id: int, limit: int = 10):
     return (
         db.query(md.Record)
-        .where(md.Record.device_id == device_id)
+        .where(md.Record.device_id == obj_id)
         .order_by(md.Record.created_at.desc())
         .limit(limit)
         .all()

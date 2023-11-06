@@ -49,6 +49,11 @@ class Device(DeviceBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DeviceCreate(DeviceBase):
+    model_config = ConfigDict(from_attributes=True)
+    created_at: Optional[datetime] = None
+
+
 class RecordBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
