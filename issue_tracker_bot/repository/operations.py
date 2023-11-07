@@ -58,8 +58,25 @@ def get_users(db: Session, skip: int = 0, limit: int = 1000):
 
 
 @database.inject_db_session
-def get_device(db: Session, obj_id: int):
-    return db.query(md.Device).filter(md.Device.id == obj_id).first()
+def get_device(
+    db: Session,
+    obj_id: int = None,
+    name: str = None,
+    group: str = None,
+    serial_number: str = None,
+):
+    if obj_id:
+        return db.query(md.Device).filter(md.Device.id == obj_id).first()
+    if name and group:
+        return (
+            db.query(md.Device)
+            .filter(md.Device.name == name, md.Device.group == group)
+            .first()
+        )
+    if serial_number:
+        return (
+            db.query(md.Device).filter(md.Device.serial_number == serial_number).first()
+        )
 
 
 @database.inject_db_session

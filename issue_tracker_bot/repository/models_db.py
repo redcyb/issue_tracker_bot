@@ -4,6 +4,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import relationship
+from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy_utils import ChoiceType
 
@@ -36,6 +37,7 @@ class Device(db.Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     records = relationship("Record", back_populates="device")
+    __table_args__ = (UniqueConstraint("name", "group", name="name_in_group"),)
 
 
 class Record(db.Base):

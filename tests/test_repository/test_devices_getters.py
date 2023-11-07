@@ -1,6 +1,7 @@
 from issue_tracker_bot.repository.operations import create_device
 from issue_tracker_bot.repository.operations import create_record
 from issue_tracker_bot.repository.operations import create_user
+from issue_tracker_bot.repository.operations import get_device
 from issue_tracker_bot.repository.operations import get_devices_with_open_problems
 from tests.test_repository.common import DBTestCase
 from tests.test_repository.factories import DeviceFactory
@@ -94,3 +95,20 @@ class DeviceGetterModelTest(DBTestCase):
             set(r.id for r in result),
             {device_with_open_problem1.id, device_with_open_problem2.id},
         )
+
+    def test_get_device_by_id(self):
+        device_id = create_device(DeviceFactory()).id
+        self.assertEqual(device_id, get_device(obj_id=device_id).id)
+
+    def test_get_device_by_name_and_group(self):
+        name, group = "a", "b"
+        create_device(DeviceFactory(name=name, group=group))
+        result = get_device(name=name, group=group)
+        self.assertEqual(name, result.name)
+        self.assertEqual(group, result.group)
+
+    def test_get_device_by_serial_number(self):
+        serial_number = "a"
+        create_device(DeviceFactory(serial_number=serial_number))
+        result = get_device(serial_number=serial_number)
+        self.assertEqual(serial_number, result.serial_number)
