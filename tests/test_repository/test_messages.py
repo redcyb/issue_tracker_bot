@@ -1,4 +1,3 @@
-from pydantic_core._pydantic_core import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from issue_tracker_bot.repository import commons
@@ -18,3 +17,17 @@ class PredefinedMessageModelTest(DBTestCase):
         self.assertIsInstance(result.id, int)
         self.assertEqual(result.text, "foo")
         self.assertEqual(result.kind.value, commons.ReportKinds.problem.value)
+
+    def test_message_not_created_with_non_unique_values(self):
+        create_predefined_message(
+            models_pyd.PredefinedMessageCreate(
+                text="foo1", kind=commons.ReportKinds.problem
+            )
+        )
+
+        with self.assertRaises(IntegrityError) as err:
+            create_predefined_message(
+                models_pyd.PredefinedMessageCreate(
+                    text="foo1", kind=commons.ReportKinds.problem
+                )
+            )
