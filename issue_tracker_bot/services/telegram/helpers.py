@@ -1,16 +1,20 @@
 import datetime
 import logging
 from collections import defaultdict
+from collections import namedtuple
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 
 from issue_tracker_bot import settings
-from issue_tracker_bot.repository import operations as R
+from issue_tracker_bot.repository import operations as ROPS
 from issue_tracker_bot.services import Actions
+from issue_tracker_bot.services import GCloudService
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 
+
+GCloudService().enrich_app_context()
 app_context = AppContext()
 
 logger = logging.getLogger(__name__)
@@ -21,7 +25,6 @@ processed = defaultdict(list)
 DEVICES_IN_ROW = 8
 OPTIONS_IN_ROW = 2
 MESSAGE_SEPARATOR = "|"
-CUSTOM_ACTION_OPTION = "Свій варіант"
 MAX_OPTION_BYTES_LEN = 41
 
 DEFAULT_HELP_MESSAGE = (
@@ -31,6 +34,10 @@ DEFAULT_HELP_MESSAGE = (
     "про рішення проблеми із пристроєм командою /solution.\n"
     "Для отримання статусу пристрою можна використати команду /status."
 )
+
+
+CustomActionOption = namedtuple("CustomActionOption", ["id", "text"])
+CUSTOM_ACTION_OPTION = CustomActionOption(0, "Свій варіант")
 
 
 def filter_only_problems(devices_groups):
@@ -73,30 +80,23 @@ def build_predefined_options_keyboard(dev_name, action):
 
     # fmt: off
     options = (
-        app_context.problems_kinds
+        ROPS.get_predefined_problems()
         if action == Actions.PROBLEM.value else
-        app_context.solutions_kinds
+        ROPS.get_predefined_solutions()
     )
     # fmt: on
 
     options += [CUSTOM_ACTION_OPTION]
-
-    def _get_option(_option):
-        _option_b = _option.encode()[:MAX_OPTION_BYTES_LEN]
-        try:
-            return _option_b.decode()
-        except UnicodeDecodeError:
-            return _option_b[:-1].decode()
 
     while options:
         batch, options = (options[:OPTIONS_IN_ROW], options[OPTIONS_IN_ROW:])
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    _get_option(option),
+                    option.text,
                     callback_data=(
                         f"{cmd}{MESSAGE_SEPARATOR}"
-                        f"{_get_option(option)}{MESSAGE_SEPARATOR}"
+                        f"{option.id}{MESSAGE_SEPARATOR}"
                         f"{action}{MESSAGE_SEPARATOR}"
                         f"{dev_name}"
                     ),
@@ -163,7 +163,7 @@ async def process_status_action_selected(device, query):
     # gcloud = GCloudService()
     # report = gcloud.report_for_page(f"DEV_{device}")
 
-    report = R.get_device_status()
+    report = ROPS.get_device_status()
 
     resp = f'Статус для пристрою "{device}":'
 
