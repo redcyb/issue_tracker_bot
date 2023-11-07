@@ -85,3 +85,20 @@ class Record(RecordBase):
     model_config = ConfigDict(from_attributes=True)
     reporter: Optional[User] = None
     device: Optional[Device] = None
+
+
+class PredefinedMessage(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    text: str
+    kind: Union[str, Choice, Enum]
+
+    @field_validator("kind")
+    @classmethod
+    def choice_to_str(cls, v: Any) -> str:
+        if isinstance(v, str):
+            return v
+        return v.value
+
+
+class PredefinedMessageCreate(PredefinedMessage):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)

@@ -69,5 +69,5 @@ class PredefinedMessage(db.Base):
     __tablename__ = "predefined_messages"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    text = Column(String, nullable=False)
+    text = Column(String, nullable=False, unique=True)
     kind = Column(ChoiceType(KINDS_CHOICES), nullable=False)

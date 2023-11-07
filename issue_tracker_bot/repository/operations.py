@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 
 from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import models_db as md
-from issue_tracker_bot.repository.database import pydantic_or_dict
 
 
 @database.inject_db_session
@@ -11,40 +10,32 @@ def get_user(db: Session, obj_id: int):
     return db.query(md.User).filter(md.User.id == obj_id).first()
 
 
-@pydantic_or_dict
+@database.pydantic_or_dict
 @database.inject_db_session
-def create_user(db: Session, data_obj: dict):
-    db_object = md.User(**data_obj)
-
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
-
-    return db_object
+@database.create_commit_refresh
+def create_user(data_obj: dict):
+    return md.User(**data_obj)
 
 
-@pydantic_or_dict
+@database.pydantic_or_dict
 @database.inject_db_session
-def create_device(db: Session, data_obj: dict):
-    db_object = md.Device(**data_obj)
-
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
-
-    return db_object
+@database.create_commit_refresh
+def create_device(data_obj: dict):
+    return md.Device(**data_obj)
 
 
-@pydantic_or_dict
+@database.pydantic_or_dict
 @database.inject_db_session
-def create_record(db: Session, data_obj: dict):
-    db_object = md.Record(**data_obj)
+@database.create_commit_refresh
+def create_predefined_message(data_obj: dict):
+    return md.PredefinedMessage(**data_obj)
 
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
 
-    return db_object
+@database.pydantic_or_dict
+@database.inject_db_session
+@database.create_commit_refresh
+def create_record(data_obj: dict):
+    return md.Record(**data_obj)
 
 
 @database.inject_db_session

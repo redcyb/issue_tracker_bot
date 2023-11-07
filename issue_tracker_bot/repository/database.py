@@ -32,6 +32,22 @@ def inject_db_session(f):
     return wrapper
 
 
+def create_commit_refresh(f):
+    def wrapper(db, *args, **kwargs):
+        """
+        This does all post creation actions for the object in database
+        """
+        db_object = f(*args, **kwargs)
+
+        db.add(db_object)
+        db.commit()
+        db.refresh(db_object)
+
+        return db_object
+
+    return wrapper
+
+
 def pydantic_or_dict(f):
     def wrapper(data_obj: Union[BaseModel, dict], *args, **kwargs):
         """
