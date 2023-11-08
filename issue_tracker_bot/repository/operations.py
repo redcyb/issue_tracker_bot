@@ -109,6 +109,13 @@ def get_users(db: Session, skip: int = 0, limit: int = 1000):
 
 
 @database.inject_db_session
+def get_predefined_message(db: Session, obj_id: int = None):
+    return (
+        db.query(md.PredefinedMessage).filter(md.PredefinedMessage.id == obj_id).first()
+    )
+
+
+@database.inject_db_session
 def get_predefined_messages(
     db: Session,
     kind: Union[str, Choice, Enum] = None,

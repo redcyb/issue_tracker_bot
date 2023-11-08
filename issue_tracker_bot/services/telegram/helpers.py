@@ -3,15 +3,19 @@ import logging
 from collections import defaultdict
 from collections import namedtuple
 
+from sqlalchemy.exc import IntegrityError
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 
 from issue_tracker_bot import settings
+from issue_tracker_bot.repository import commons
+from issue_tracker_bot.repository import models_pyd as mp
 from issue_tracker_bot.repository import operations as ROPS
 from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services import GCloudService
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
+from issue_tracker_bot.services.message_processing import RecordBuilder
 from issue_tracker_bot.services.telegram import app_context_helpers
 
 # Fresh way to enrich context
@@ -39,6 +43,20 @@ DEFAULT_HELP_MESSAGE = (
 
 CustomActionOption = namedtuple("CustomActionOption", ["id", "text"])
 CUSTOM_ACTION_OPTION = CustomActionOption(0, "Свій варіант")
+
+ACTION_TO_MESSAGE_KIND_MAP = {
+    Actions.PROBLEM.value: commons.ReportKinds.problem.value,
+    Actions.SOLUTION.value: commons.ReportKinds.solution.value,
+}
+
+MESSAGE_KIND_TO_ACTION_MAP = {
+    commons.ReportKinds.problem.value: Actions.PROBLEM.value,
+    commons.ReportKinds.solution.value: Actions.SOLUTION.value,
+}
+
+
+def build_device_full_name(device):
+    return f"{device.name} (гр. {device.group})"
 
 
 def get_grouped_devices(devices):
@@ -166,10 +184,10 @@ async def process_status_action_selected(device_id, query):
     device = ROPS.get_device(device_id)
     records = device.records
 
-    resp = f'Статус для пристрою "{device.name} (гр. {device.group})":'
+    resp = f'Статус для пристрою "{build_device_full_name(device)}":'
 
     if not records:
-        resp = f'\n\nНема записів для пристрою "{device.name} (гр. {device.group})"'
+        resp = f'\n\nНема записів для пристрою "{build_device_full_name(device)}"'
     else:
         # 10-29-2023 12:55:48 redcyb'
         # проблема : Проблема 1 Use of language
@@ -236,10 +254,20 @@ async def make_text_to_record(txt, update):
     )
 
 
-async def make_button_to_record(txt, query, update):
-    user = query.from_user
-    user_id = user.id
-    author_str = f"'{user.username or user.full_name}'"
+async def make_button_to_record(message_id, query, update):
+    tg_user = query.from_user
+    user_id = tg_user.id
+    author_str = tg_user.username or tg_user.full_name
+
+    try:
+        user = ROPS.create_user(
+            mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
+        )
+    except IntegrityError as err:
+        if "already exists" in str(err):
+            user = ROPS.get_user(obj_id=user_id)
+        else:
+            raise err
 
     # Check if not initiated then quit
 
@@ -249,17 +277,37 @@ async def make_button_to_record(txt, query, update):
 
     # Writing record
 
-    record = initiated.pop(user_id)
-    gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], author_str, txt)
+    record = initiated.pop(user.id)
+
+    device_id, action, author, message_id = (
+        record["device"],
+        record["action"],
+        author_str,
+        message_id,
+    )
+
+    device = ROPS.get_device(obj_id=device_id)
+    message = ROPS.get_predefined_message(obj_id=message_id)
+
+    ROPS.create_record(
+        mp.RecordCreate(
+            reporter_id=user.id,
+            device_id=device.id,
+            kind=message.kind,
+            text=message.text,
+        )
+    )
+
+    builder = RecordBuilder()
+    builder.build(device.name, action, author, message.text)
 
     # Responding to user
 
     result_text = (
         f"{record['time']}\n"
-        f"Прийнято запис від {author_str}\n"
-        f"для пристроя \"{record['device']}\":\n\n"
-        f"\"{record['action']} :: {txt}\" "
+        f'Прийнято запис від "{author_str}"\n'
+        f'для пристроя "{build_device_full_name(device)}":\n\n'
+        f"\"{record['action']} :: {message.text}\" "
     )
 
     await query.edit_message_text(text=result_text)
@@ -269,7 +317,7 @@ async def process_option_for_action_selected_button(msg, query, update):
     option, action, device = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
 
-    if option == CUSTOM_ACTION_OPTION:
+    if option == str(CUSTOM_ACTION_OPTION.id):
         resp = f'Дія: "{action}". Пристрій: "{device}". Введіть опис:'
         await query.edit_message_text(text=resp)
         return
