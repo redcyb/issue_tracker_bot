@@ -1,5 +1,6 @@
-from issue_tracker_bot import settings
 import requests
+
+from issue_tracker_bot import settings
 
 
 def set_webhook():
@@ -18,6 +19,7 @@ def delete_webhook():
         raise RuntimeError(response["description"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # delete_webhook()
-    set_webhook()
+    # set_webhook()
+    ...
