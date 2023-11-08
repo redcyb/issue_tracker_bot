@@ -5,18 +5,8 @@ from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import models_db
 from issue_tracker_bot.repository import models_pyd
 from issue_tracker_bot.repository import operations as ROPS
+from tests.test_repository.common import cleanup_table
 from tests.test_repository.common import DBTestCase
-
-
-@database.inject_db_session
-def cleanup_table(db, model):
-    try:
-        num_rows_deleted = db.query(model).delete()
-        db.commit()
-    except:
-        db.rollback()
-    else:
-        return num_rows_deleted
 
 
 class PredefinedMessageModelTest(DBTestCase):

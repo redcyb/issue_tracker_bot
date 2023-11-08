@@ -61,13 +61,8 @@ def get_device(
 
 
 @database.inject_db_session
-def get_all_devices(db: Session):
-    return (
-        db.query(md.Device)
-        .order_by(md.Device.group.asc())
-        .group_by(md.Device.group)
-        .all()
-    )
+def get_devices(db: Session):
+    return db.query(md.Device).order_by(md.Device.group.asc()).all()
 
 
 @database.inject_db_session

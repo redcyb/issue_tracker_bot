@@ -12,9 +12,14 @@ from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services import GCloudService
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
-
+from issue_tracker_bot.services.telegram import app_context_helpers
 
 GCloudService().enrich_app_context()
+
+app_context_helpers.load_devices_list()
+app_context_helpers.load_problems_list()
+app_context_helpers.load_solutions_list()
+
 app_context = AppContext()
 
 logger = logging.getLogger(__name__)
@@ -54,27 +59,27 @@ def filter_only_problems(devices_groups):
 def build_device_list_keyboard(devices_groups, action):
     keyboard = []
     cmd = MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value
-    for group, dev_names in devices_groups.items():
+    for group, devices in devices_groups.items():
         keyboard.append([])
-        while dev_names:
-            batch, dev_names = (dev_names[:DEVICES_IN_ROW], dev_names[DEVICES_IN_ROW:])
+        while devices:
+            batch, devices = (devices[:DEVICES_IN_ROW], devices[DEVICES_IN_ROW:])
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        dev_name,
+                        device.name,
                         callback_data=(
                             f"{cmd}{MESSAGE_SEPARATOR}"
                             f"{action}{MESSAGE_SEPARATOR}"
-                            f"{dev_name}"
+                            f"{device.id}"
                         ),
                     )
-                    for dev_name in batch
+                    for device in batch
                 ]
             )
     return InlineKeyboardMarkup(keyboard)
 
 
-def build_predefined_options_keyboard(dev_name, action):
+def build_predefined_options_keyboard(device_id, action):
     keyboard = []
     cmd = MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value
 
@@ -98,7 +103,7 @@ def build_predefined_options_keyboard(dev_name, action):
                         f"{cmd}{MESSAGE_SEPARATOR}"
                         f"{option.id}{MESSAGE_SEPARATOR}"
                         f"{action}{MESSAGE_SEPARATOR}"
-                        f"{dev_name}"
+                        f"{device_id}"
                     ),
                 )
                 for option in batch
@@ -159,39 +164,40 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
     raise Exception(f"Unexpected initial action: '{msg}'")
 
 
-async def process_status_action_selected(device, query):
+async def process_status_action_selected(device_id, query):
     # gcloud = GCloudService()
     # report = gcloud.report_for_page(f"DEV_{device}")
 
-    report = ROPS.get_device_status()
+    device = ROPS.get_device(device_id)
+    records = device.records
 
-    resp = f'Статус для пристрою "{device}":'
+    resp = f'Статус для пристрою "{device.name} (гр. {device.group})":'
 
-    if not report:
-        resp = f'\n\nНема записів для пристроя "{device}"'
+    if not records:
+        resp = f'\n\nНема записів для пристрою "{device.name} (гр. {device.group})"'
     else:
-        resp += f"\n{report}"
+        resp += f"\n{records}"
 
     await query.edit_message_text(text=resp)
 
 
 async def process_device_for_action_selected_button(msg, query):
-    action, device = msg.split(MESSAGE_SEPARATOR)
+    action, device_id = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
     user_id = query.from_user.id
 
     if action == Actions.STATUS.value:
-        await process_status_action_selected(device, query)
+        await process_status_action_selected(device_id, query)
         return
 
     initiated[user_id] = {
         "action": action,
-        "device": device,
+        "device": device_id,
         "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
         "message": None,
     }
 
-    reply_markup = build_predefined_options_keyboard(device, action)
+    reply_markup = build_predefined_options_keyboard(device_id, action)
     await query.edit_message_text(
         text=f"Оберіть повідомлення із списку", reply_markup=reply_markup
     )
