@@ -14,9 +14,6 @@ from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.telegram import app_context_helpers
 
-# Will be deprecated soon
-GCloudService().enrich_app_context()
-
 # Fresh way to enrich context
 app_context_helpers.enrich_app_context()
 
@@ -40,18 +37,15 @@ DEFAULT_HELP_MESSAGE = (
     "Для отримання статусу пристрою можна використати команду /status."
 )
 
-
 CustomActionOption = namedtuple("CustomActionOption", ["id", "text"])
 CUSTOM_ACTION_OPTION = CustomActionOption(0, "Свій варіант")
 
 
-def filter_only_problems(devices_groups):
+def get_grouped_devices(devices):
     result = defaultdict(list)
 
-    for group, dev_names in devices_groups.items():
-        for dev_name in dev_names:
-            if dev_name in app_context.open_problems:
-                result[group].append(dev_name)
+    for device in devices:
+        result[device.group].append(device)
 
     return result
 
@@ -133,7 +127,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
     action = msg.strip().lower()
 
     if action == Actions.SOLUTION.value:
-        problematic_devices = filter_only_problems(app_context.devices)
+        problematic_devices = get_grouped_devices(ROPS.get_devices_with_open_problems())
         reply_markup = build_device_list_keyboard(problematic_devices, action)
         if problematic_devices:
             await make_response(
@@ -152,7 +146,8 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
         return
 
     if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
-        reply_markup = build_device_list_keyboard(app_context.devices, msg)
+        grouped_devices = get_grouped_devices(ROPS.get_devices())
+        reply_markup = build_device_list_keyboard(grouped_devices, msg)
         await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
             reply_markup=reply_markup,
@@ -176,7 +171,15 @@ async def process_status_action_selected(device_id, query):
     if not records:
         resp = f'\n\nНема записів для пристрою "{device.name} (гр. {device.group})"'
     else:
-        resp += f"\n{records}"
+        # 10-29-2023 12:55:48 redcyb'
+        # проблема : Проблема 1 Use of language
+
+        resp += "".join(
+            [
+                f"\n\n{r.created_at.strftime(settings.REPORT_DT_FORMAT)} {r.reporter.name}\n{r.kind} : {r.text}"
+                for r in records
+            ]
+        )
 
     await query.edit_message_text(text=resp)
 
