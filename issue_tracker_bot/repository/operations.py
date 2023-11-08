@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Union
 
+from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import Session
 from sqlalchemy_utils.types import Choice
@@ -15,6 +17,18 @@ from issue_tracker_bot.repository import models_db as md
 @database.create_commit_refresh
 def create_user(data_obj: dict):
     return md.User(**data_obj)
+
+
+@database.pydantic_or_dict
+def get_or_create_user(data_obj: dict):
+    try:
+        user = create_user(data_obj)
+    except IntegrityError as err:
+        if "already exists" in str(err):
+            user = get_user(obj_id=data_obj["id"])
+        else:
+            raise err
+    return user
 
 
 @database.pydantic_or_dict
@@ -125,9 +139,7 @@ def get_predefined_messages(
     query = db.query(md.PredefinedMessage)
 
     if kind:
-        if isinstance(kind, Choice):
-            ...
-        elif isinstance(kind, str):
+        if isinstance(kind, str):
             kind = Choice(kind, kind)
         elif isinstance(kind, Enum):
             kind = Choice(kind.value, kind.value)

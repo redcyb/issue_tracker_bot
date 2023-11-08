@@ -228,10 +228,14 @@ async def make_text_to_record(txt, update):
     chat_id = update.message.chat_id
     message_id = update.message.id
     bot = update.get_bot()
-    user = update.message.from_user
-    user_id = user.id
 
-    author_str = user.username or user.full_name
+    tg_user = update.message.from_user
+    user_id = tg_user.id
+    author_str = tg_user.username or tg_user.full_name
+
+    user = ROPS.get_or_create_user(
+        mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
+    )
 
     if not initiated.get(user_id):
         await update.get_bot().send_message(
@@ -239,18 +243,32 @@ async def make_text_to_record(txt, update):
         )
         return
 
-    record = initiated.pop(user_id)
+    record_cached = initiated.pop(user.id)
 
-    gcloud = GCloudService()
-    gcloud.commit_record(record["device"], record["action"], author_str, txt)
+    device_id, action, author = (
+        record_cached["device"],
+        record_cached["action"],
+        user.name,
+    )
+
+    device = ROPS.get_device(obj_id=device_id)
+
+    record = ROPS.create_record(
+        mp.RecordCreate(
+            reporter_id=user.id,
+            device_id=device.id,
+            kind=ACTION_TO_MESSAGE_KIND_MAP[action],
+            text=txt,
+        )
+    )
 
     await bot.delete_message(chat_id, message_id)
     await bot.send_message(
         chat_id=chat_id,
-        text=f"{record['time']}\n"
-        f"Прийнято запис від '{author_str}'\n"
-        f"для пристроя \"{record['device']}\":\n\n"
-        f"\"{record['action']} :: {txt}\" ",
+        text=f"{record.created_at.strftime(settings.REPORT_DT_FORMAT)}\n"
+        f"Прийнято запис від '{user.name}'\n"
+        f'для пристроя "{build_device_full_name(device)}":\n\n'
+        f'"{action} :: {record.text}" ',
     )
 
 
@@ -259,18 +277,11 @@ async def make_button_to_record(message_id, query, update):
     user_id = tg_user.id
     author_str = tg_user.username or tg_user.full_name
 
-    try:
-        user = ROPS.create_user(
-            mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
-        )
-    except IntegrityError as err:
-        if "already exists" in str(err):
-            user = ROPS.get_user(obj_id=user_id)
-        else:
-            raise err
+    user = ROPS.get_or_create_user(
+        mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
+    )
 
     # Check if not initiated then quit
-
     if not initiated:
         await query.edit_message_text(text=DEFAULT_HELP_MESSAGE)
         return
@@ -314,11 +325,13 @@ async def make_button_to_record(message_id, query, update):
 
 
 async def process_option_for_action_selected_button(msg, query, update):
-    option, action, device = msg.split(MESSAGE_SEPARATOR)
+    option, action, device_id = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
 
+    device = ROPS.get_device(obj_id=device_id)
+
     if option == str(CUSTOM_ACTION_OPTION.id):
-        resp = f'Дія: "{action}". Пристрій: "{device}". Введіть опис:'
+        resp = f'Дія: "{action}". Пристрій: "{build_device_full_name(device)}". Введіть опис:'
         await query.edit_message_text(text=resp)
         return
 
