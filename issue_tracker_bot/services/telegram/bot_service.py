@@ -101,3 +101,11 @@ async def handle_init_status_request(
     await H.process_initial_action_selected_button(
         H.Actions.STATUS.value, update=update
     )
+
+
+async def handle_open_problems_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    await H.process_initial_action_selected_button(
+        H.Actions.OPEN_PROBLEMS.value, update=update
+    )
