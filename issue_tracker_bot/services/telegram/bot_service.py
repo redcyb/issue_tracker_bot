@@ -16,13 +16,22 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         [
             H.InlineKeyboardButton(
                 H.Actions.PROBLEM.value,
-                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.PROBLEM.value}"),
+                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.PROBLEM.value}",
+            ),
             H.InlineKeyboardButton(
                 H.Actions.SOLUTION.value,
-                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.SOLUTION.value}"),
+                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.SOLUTION.value}",
+            ),
             H.InlineKeyboardButton(
                 H.Actions.STATUS.value,
-                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.STATUS.value}")
+                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.STATUS.value}",
+            ),
+        ],
+        [
+            H.InlineKeyboardButton(
+                H.Actions.OPEN_PROBLEMS.value,
+                callback_data=f"{cmd}{H.MESSAGE_SEPARATOR}{H.Actions.OPEN_PROBLEMS.value}",
+            )
         ],
     ]
 
@@ -51,7 +60,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if cmd == H.MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value:
-        await H.process_option_for_action_selected_button(msg, query=query, update=update)
+        await H.process_option_for_action_selected_button(
+            msg, query=query, update=update
+        )
         return
 
     raise Exception(f"Unexpected command: '{cmd}'")
@@ -68,13 +79,25 @@ async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await update.message.reply_text(H.DEFAULT_HELP_MESSAGE)
 
 
-async def handle_init_problem_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await H.process_initial_action_selected_button(H.Actions.PROBLEM.value, update=update)
+async def handle_init_problem_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    await H.process_initial_action_selected_button(
+        H.Actions.PROBLEM.value, update=update
+    )
 
 
-async def handle_init_solution_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await H.process_initial_action_selected_button(H.Actions.SOLUTION.value, update=update)
+async def handle_init_solution_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    await H.process_initial_action_selected_button(
+        H.Actions.SOLUTION.value, update=update
+    )
 
 
-async def handle_init_status_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await H.process_initial_action_selected_button(H.Actions.STATUS.value, update=update)
+async def handle_init_status_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    await H.process_initial_action_selected_button(
+        H.Actions.STATUS.value, update=update
+    )

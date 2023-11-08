@@ -5,6 +5,7 @@ class Actions(Enum):
     PROBLEM = "проблема"
     SOLUTION = "рішення"
     STATUS = "статус"
+    OPEN_PROBLEMS = "відкриті проблеми"
 
 
 class MenuCommandStates(Enum):

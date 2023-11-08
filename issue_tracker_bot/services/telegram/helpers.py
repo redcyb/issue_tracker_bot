@@ -3,7 +3,6 @@ import logging
 from collections import defaultdict
 from collections import namedtuple
 
-from sqlalchemy.exc import IntegrityError
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 
@@ -12,7 +11,6 @@ from issue_tracker_bot.repository import commons
 from issue_tracker_bot.repository import models_pyd as mp
 from issue_tracker_bot.repository import operations as ROPS
 from issue_tracker_bot.services import Actions
-from issue_tracker_bot.services import GCloudService
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.message_processing import RecordBuilder
@@ -169,6 +167,25 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
         await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
             reply_markup=reply_markup,
+            query=query,
+            update=update,
+        )
+        return
+
+    if action == Actions.OPEN_PROBLEMS.value:
+        devices = ROPS.get_devices_with_open_problems()
+
+        result = f"\nВсього відкрито проблем {len(devices)}:\n"
+        result += "\n".join(
+            f"\n{build_device_full_name(d)}:"
+            f"\n{d.records[-1].created_at.strftime(settings.REPORT_DT_FORMAT)}"
+            f"\n{d.records[-1].text}"
+            for d in devices
+        )
+
+        await make_response(
+            text=result,
+            reply_markup=None,
             query=query,
             update=update,
         )

@@ -1,19 +1,17 @@
 # pylint: disable=wrong-import-position
+import logging
 
-"""Simple Bot to reply to Telegram messages.
-
-This is built on the API wrapper, see echobot.py to see the same example built
-on the telegram.ext bot framework.
-This program is dedicated to the public domain under the CC0 license.
-"""
 from issue_tracker_bot import settings
 from issue_tracker_bot.services.telegram import bot_service as srv
 
-import logging
-
 logger = logging.getLogger(__name__)
 
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+)
 
 
 def create_application():
@@ -26,13 +24,19 @@ def create_application():
         .connect_timeout(settings.TG_READ_TIMEOUT)
         .pool_timeout(settings.TG_READ_TIMEOUT)
         .write_timeout(settings.TG_WRITE_TIMEOUT)
-        .token(settings.TELEGRAM_TOKEN).build()
+        .token(settings.TELEGRAM_TOKEN)
+        .build()
     )
 
     application.add_handler(CommandHandler("help", srv.handle_help))
     application.add_handler(CommandHandler("start", srv.handle_start))
     application.add_handler(CommandHandler("problem", srv.handle_init_problem_request))
-    application.add_handler(CommandHandler("solution", srv.handle_init_solution_request))
+    application.add_handler(
+        CommandHandler("solution", srv.handle_init_solution_request)
+    )
+    application.add_handler(
+        CommandHandler("open_problems", srv.handle_init_solution_request)
+    )
     application.add_handler(CommandHandler("status", srv.handle_init_status_request))
 
     application.add_handler(CallbackQueryHandler(srv.handle_button))
