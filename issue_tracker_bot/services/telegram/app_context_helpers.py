@@ -6,6 +6,13 @@ from issue_tracker_bot.services.context import AppContext
 app_context = AppContext()
 
 
+def enrich_app_context():
+    load_devices_list()
+    load_solutions_list()
+    load_problems_list()
+    load_open_problems()
+
+
 def load_devices_list():
     devices = ROPS.get_devices()
     result = defaultdict(list)

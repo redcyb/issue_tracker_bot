@@ -14,11 +14,11 @@ from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.telegram import app_context_helpers
 
+# Will be deprecated soon
 GCloudService().enrich_app_context()
 
-app_context_helpers.load_devices_list()
-app_context_helpers.load_problems_list()
-app_context_helpers.load_solutions_list()
+# Fresh way to enrich context
+app_context_helpers.enrich_app_context()
 
 app_context = AppContext()
 
