@@ -30,14 +30,13 @@ class User(db.Base):
 class Device(db.Base):
     __tablename__ = "devices"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
     group = Column(String, nullable=False)
-    serial_number = Column(String)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     records = relationship("Record", back_populates="device")
-    __table_args__ = (UniqueConstraint("name", "group", name="name_in_group"),)
+    # __table_args__ = (UniqueConstraint("name", "group", name="name_in_group"),)
 
 
 class Record(db.Base):
@@ -57,7 +56,7 @@ class Record(db.Base):
     reporter = relationship("User", back_populates="records")
 
     device_id = Column(
-        Integer,
+        String,
         ForeignKey("devices.id", ondelete="CASCADE", onupdate="CASCADE"),
         index=True,
         nullable=False,

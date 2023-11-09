@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Union
 
-from pydantic import BaseModel
+from sqlalchemy import insert
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import Session
@@ -36,6 +37,24 @@ def get_or_create_user(data_obj: dict):
 @database.create_commit_refresh
 def create_device(data_obj: dict):
     return md.Device(**data_obj)
+
+
+@database.inject_db_session
+def update_devices_in_batch(db, devices):
+    if not devices:
+        return
+
+    db.execute(update(md.Device), devices)
+    db.commit()
+
+
+@database.inject_db_session
+def create_devices_in_batch(db, devices):
+    if not devices:
+        return
+
+    db.execute(insert(md.Device), devices)
+    db.commit()
 
 
 @database.pydantic_or_dict
@@ -76,7 +95,9 @@ def get_device(
 
 @database.inject_db_session
 def get_devices(db: Session):
-    return db.query(md.Device).order_by(md.Device.group.asc()).all()
+    return (
+        db.query(md.Device).order_by(md.Device.group.asc(), md.Device.name.asc()).all()
+    )
 
 
 @database.inject_db_session

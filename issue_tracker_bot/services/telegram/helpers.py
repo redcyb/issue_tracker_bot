@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 initiated = {}
 processed = defaultdict(list)
 
-DEVICES_IN_ROW = 8
+DEVICES_IN_ROW = 4
 OPTIONS_IN_ROW = 2
 MESSAGE_SEPARATOR = "|"
 MAX_OPTION_BYTES_LEN = 41
@@ -55,7 +55,7 @@ MESSAGE_KIND_TO_ACTION_MAP = {
 
 
 def build_device_full_name(device):
-    return f"{device.name} (гр. {device.group})"
+    return f"{device.group}:{device.name}"
 
 
 def get_grouped_devices(devices):
@@ -77,7 +77,7 @@ def build_device_list_keyboard(devices_groups, action):
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        device.name,
+                        build_device_full_name(device),
                         callback_data=(
                             f"{cmd}{MESSAGE_SEPARATOR}"
                             f"{action}{MESSAGE_SEPARATOR}"

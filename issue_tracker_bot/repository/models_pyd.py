@@ -38,10 +38,9 @@ class UserCreate(UserBase):
 
 
 class DeviceBase(BaseModel):
-    id: Optional[int] = None
+    id: str
     name: str
     group: str
-    serial_number: Optional[str] = None
     created_at: datetime
 
 

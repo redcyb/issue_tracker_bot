@@ -7,8 +7,6 @@ app_context = AppContext()
 
 
 def enrich_app_context():
-    # app_context.set_d∂Ωevices(load_devices_list())
-    # app_context.set_open_problems(load_open_problems())
     app_context.set_solutions_kinds(load_solutions_list())
     app_context.set_problems_kinds(load_problems_list())
 
