@@ -67,6 +67,16 @@ def get_grouped_devices(devices):
     return result
 
 
+def get_grouped_reported_devices(devices):
+    result = defaultdict(list)
+
+    for device in devices:
+        if device.records:
+            result[device.group].append(device)
+
+    return result
+
+
 def build_device_list_keyboard(devices_groups, action):
     keyboard = []
     cmd = MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value
@@ -162,8 +172,19 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
             )
         return
 
-    if action in [Actions.PROBLEM.value, Actions.STATUS.value]:
+    if action == Actions.PROBLEM.value:
         grouped_devices = get_grouped_devices(ROPS.get_devices())
+        reply_markup = build_device_list_keyboard(grouped_devices, msg)
+        await make_response(
+            text=f"Дія: {msg}. Оберіть пристрій",
+            reply_markup=reply_markup,
+            query=query,
+            update=update,
+        )
+        return
+
+    if action in Actions.STATUS.value:
+        grouped_devices = get_grouped_reported_devices(ROPS.get_devices())
         reply_markup = build_device_list_keyboard(grouped_devices, msg)
         await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
