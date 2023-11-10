@@ -7,14 +7,14 @@ from issue_tracker_bot.repository.operations import create_device
 from issue_tracker_bot.repository.operations import create_record
 from issue_tracker_bot.repository.operations import create_user
 from tests.test_repository.common import DBTestCase
+from tests.test_repository.factories import DeviceFactory
+from tests.test_repository.factories import ReporterFactory
 
 
 class RecordModelTest(DBTestCase):
     def test_record_created_with_all_required_fields(self):
-        device_id = create_device(models_pyd.DeviceCreate(name="foo", group="bar")).id
-        user_id = create_user(
-            models_pyd.UserCreate(id=100, name="foo", role=commons.Roles.reporter)
-        ).id
+        device_id = create_device(models_pyd.DeviceCreate(**DeviceFactory())).id
+        user_id = create_user(models_pyd.UserCreate(**ReporterFactory())).id
 
         record = create_record(
             models_pyd.RecordCreate(
@@ -29,8 +29,8 @@ class RecordModelTest(DBTestCase):
         self.assertEqual(record.reporter_id, user_id)
 
     def test_record_not_created_with_fake_f_keys(self):
-        device_id = 1000
-        user_id = 10000
+        device_id = "1000"
+        user_id = "10000"
 
         with self.assertRaises(IntegrityError) as err:
             create_record(

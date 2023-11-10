@@ -12,7 +12,7 @@ from tests.test_repository.common import DBTestCase
 
 class UserModelTest(DBTestCase):
     def test_user_created_with_all_required_fields(self):
-        uid = random.randint(1, 100000)
+        uid = str(random.randint(1, 100000))
 
         create_user(
             models_pyd.UserCreate(id=uid, name="foo", role=commons.Roles.reporter)
