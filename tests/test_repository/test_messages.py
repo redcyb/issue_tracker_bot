@@ -1,12 +1,12 @@
 from sqlalchemy.exc import IntegrityError
 
 from issue_tracker_bot.repository import commons
-from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import models_db
 from issue_tracker_bot.repository import models_pyd
 from issue_tracker_bot.repository import operations as ROPS
 from tests.test_repository.common import cleanup_table
 from tests.test_repository.common import DBTestCase
+from tests.test_repository.factories import PredefinedMessageFactory
 
 
 class PredefinedMessageModelTest(DBTestCase):
@@ -15,40 +15,39 @@ class PredefinedMessageModelTest(DBTestCase):
         cleanup_table(models_db.PredefinedMessage)
 
     def test_message_created_with_all_required_fields(self):
+        target = PredefinedMessageFactory(kind=commons.ReportKinds.problem.value)
         result = ROPS.create_predefined_message(
-            models_pyd.PredefinedMessageCreate(
-                text="foo", kind=commons.ReportKinds.problem
-            )
+            models_pyd.PredefinedMessageCreate(**target)
         )
 
-        self.assertIsInstance(result.id, int)
-        self.assertEqual(result.text, "foo")
+        self.assertIsInstance(result.id, str)
+        self.assertEqual(result.text, target["text"])
         self.assertEqual(result.kind.value, commons.ReportKinds.problem.value)
 
     def test_message_not_created_with_non_unique_values(self):
         ROPS.create_predefined_message(
             models_pyd.PredefinedMessageCreate(
-                text="foo", kind=commons.ReportKinds.problem
+                **PredefinedMessageFactory(
+                    text="foo", kind=commons.ReportKinds.problem.value
+                )
             )
         )
 
         with self.assertRaises(IntegrityError) as err:
             ROPS.create_predefined_message(
                 models_pyd.PredefinedMessageCreate(
-                    text="foo", kind=commons.ReportKinds.problem
+                    **PredefinedMessageFactory(
+                        text="foo", kind=commons.ReportKinds.problem.value
+                    )
                 )
             )
 
     def test_get_all_predefined_messages(self):
         ROPS.create_predefined_message(
-            models_pyd.PredefinedMessageCreate(
-                text="p1", kind=commons.ReportKinds.problem
-            )
+            models_pyd.PredefinedMessageCreate(**PredefinedMessageFactory())
         )
         ROPS.create_predefined_message(
-            models_pyd.PredefinedMessageCreate(
-                text="s1", kind=commons.ReportKinds.solution
-            )
+            models_pyd.PredefinedMessageCreate(**PredefinedMessageFactory())
         )
 
         result = ROPS.get_predefined_messages()
@@ -57,12 +56,12 @@ class PredefinedMessageModelTest(DBTestCase):
     def test_get_all_predefined_problems(self):
         ROPS.create_predefined_message(
             models_pyd.PredefinedMessageCreate(
-                text="p1", kind=commons.ReportKinds.problem
+                **PredefinedMessageFactory(kind=commons.ReportKinds.problem.value)
             )
         )
         ROPS.create_predefined_message(
             models_pyd.PredefinedMessageCreate(
-                text="s1", kind=commons.ReportKinds.solution
+                **PredefinedMessageFactory(kind=commons.ReportKinds.solution.value)
             )
         )
 
@@ -73,12 +72,12 @@ class PredefinedMessageModelTest(DBTestCase):
     def test_get_all_predefined_solutions(self):
         ROPS.create_predefined_message(
             models_pyd.PredefinedMessageCreate(
-                text="p1", kind=commons.ReportKinds.problem
+                **PredefinedMessageFactory(kind=commons.ReportKinds.problem.value)
             )
         )
         ROPS.create_predefined_message(
             models_pyd.PredefinedMessageCreate(
-                text="s1", kind=commons.ReportKinds.solution
+                **PredefinedMessageFactory(kind=commons.ReportKinds.solution.value)
             )
         )
 

@@ -3,14 +3,16 @@ from pydantic_core._pydantic_core import ValidationError
 from issue_tracker_bot.repository import models_pyd
 from issue_tracker_bot.repository.operations import create_device
 from tests.test_repository.common import DBTestCase
+from tests.test_repository.factories import DeviceFactory
 
 
 class DeviceModelTest(DBTestCase):
     def test_device_created_with_all_required_fields(self):
-        device = create_device(models_pyd.DeviceCreate(name="foo", group="bar"))
-        self.assertIsInstance(device.id, int)
-        self.assertEqual(device.name, "foo")
-        self.assertEqual(device.group, "bar")
+        target = DeviceFactory()
+        device = create_device(models_pyd.DeviceCreate(**target))
+        self.assertIsInstance(device.id, str)
+        self.assertEqual(device.name, target["name"])
+        self.assertEqual(device.group, target["group"])
 
     def test_device_not_created_without_required_fields(self):
         with self.assertRaises(ValidationError) as err:

@@ -109,3 +109,15 @@ async def handle_open_problems_request(
     await H.process_initial_action_selected_button(
         H.Actions.OPEN_PROBLEMS.value, update=update
     )
+
+
+async def handle_sync_context_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    try:
+        H.sync_context()
+    except Exception:
+        logger.exception("")
+        await update.message.reply_text(f"Error during handling request 'sync_context'")
+    else:
+        await update.message.reply_text(f"Контекст успішно синхронізовано")

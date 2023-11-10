@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import operations as ROPS
 from issue_tracker_bot.services.context import AppContext
 
@@ -7,8 +8,8 @@ app_context = AppContext()
 
 
 def enrich_app_context():
-    # app_context.set_d∂Ωevices(load_devices_list())
-    # app_context.set_open_problems(load_open_problems())
+    database.Base.metadata.create_all(bind=database.engine)
+
     app_context.set_solutions_kinds(load_solutions_list())
     app_context.set_problems_kinds(load_problems_list())
 

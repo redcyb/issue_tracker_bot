@@ -109,12 +109,6 @@ class DeviceGetterModelTest(DBTestCase):
         self.assertEqual(name, result.name)
         self.assertEqual(group, result.group)
 
-    def test_get_device_by_serial_number(self):
-        serial_number = "a"
-        ROPS.create_device(DeviceFactory(serial_number=serial_number))
-        result = ROPS.get_device(serial_number=serial_number)
-        self.assertEqual(serial_number, result.serial_number)
-
     def test_get_devices_grouped(self):
         for j in range(3):
             for i in range(4):

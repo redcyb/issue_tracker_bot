@@ -43,10 +43,10 @@ class GCloudService:
         )
 
     def enrich_app_context(self):
-        self._load_devices_list()
-        self._load_problems_list()
-        self._load_solutions_list()
-        self._load_open_problems()
+        self.load_devices()
+        self.load_problems_kinds()
+        self.load_solutions_kinds()
+        self.load_open_problems()
 
     def list_sheet_files(self):
         if not self.credentials:
@@ -60,7 +60,7 @@ class GCloudService:
             response = (
                 self.drive_service.files()
                 .list(
-                    q=f"\"{FOLDER_ID}\" in parents",
+                    q=f'"{FOLDER_ID}" in parents',
                     pageToken=page_token,
                     spaces="drive",
                 )
@@ -99,11 +99,7 @@ class GCloudService:
         sheets = self.sheet_service.spreadsheets()
 
         try:
-            result = (
-                sheets.values()
-                .get(spreadsheetId=sheet_id, range=range_)
-                .execute()
-            )
+            result = sheets.values().get(spreadsheetId=sheet_id, range=range_).execute()
         except HttpError as exc:
             if "Unable to parse range" in str(exc):
                 return None
@@ -177,7 +173,9 @@ class GCloudService:
         try:
             sheets.batchUpdate(spreadsheetId=sheet_id, body=requests_body).execute()
         except HttpError as exc:
-            raise RuntimeError(f"Request to sheets.batchUpdate was not successful: {exc}")
+            raise RuntimeError(
+                f"Request to sheets.batchUpdate was not successful: {exc}"
+            )
 
     def manage_problem_in_cache(self, action, device, problem):
         if action == Actions.PROBLEM.value:
@@ -212,22 +210,25 @@ class GCloudService:
             return f"Error: {exc}"
 
         self.manage_problem_in_cache(builder.action, builder.device, builder.record)
-        answer = (
-            f"Record was created with message '{message}' on page '{builder.page}'"
-        )
+        answer = f"Record was created with message '{message}' on page '{builder.page}'"
         logging.info(answer)
         return answer
 
     def list_all_sheets(self):
-        sheet_metadata = self.sheet_service.spreadsheets().get(spreadsheetId=TRACKING_SHEET_ID).execute()
+        sheet_metadata = (
+            self.sheet_service.spreadsheets()
+            .get(spreadsheetId=TRACKING_SHEET_ID)
+            .execute()
+        )
         sheets = sheet_metadata.get("sheets", "")
         return [
             {
                 "title": sh["properties"]["title"],
-            } for sh in sheets
+            }
+            for sh in sheets
         ]
 
-    def _load_open_problems(self):
+    def load_open_problems(self):
         def _get_device(_rng: str):
             return _rng.split("!")[0].lstrip("DEV_")
 
@@ -242,48 +243,40 @@ class GCloudService:
         all_values = all_values["valueRanges"]
 
         device_values_map = {
-            _get_device(sh["range"]): sh["values"] for sh in all_values
+            _get_device(sh["range"]): sh["values"]
+            for sh in all_values
             if _is_last_action_problem(sh.get("values", []))
         }
 
-        app_context.set_open_problems(device_values_map)
+        return device_values_map
 
-    def _load_problems_list(self):
-        values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:A1000")["values"]
-        app_context.set_problems_kinds([v[0] for v in values])
-        return app_context.problems_kinds
+    def load_problems_kinds(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:B1000")["values"]
+        values.pop(0)  # remove header
+        return values
 
-    def _load_solutions_list(self):
-        values = self.load_range(CONTEXT_SHEET_ID, "solutions!A1:A1000")["values"]
-        app_context.set_solutions_kinds([v[0] for v in values])
-        return app_context.solutions_kinds
+    def load_solutions_kinds(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "solutions!A1:B1000")["values"]
+        values.pop(0)  # remove header
+        return values
 
-    def _load_devices_list(self):
-        values = self.load_range(CONTEXT_SHEET_ID, "devices!A1:B1000")["values"]
-        names, values = values[0], values[1:]
-        groups_cnt = len(names)
+    def load_devices(self):
+        values = self.load_range(CONTEXT_SHEET_ID, "devices!A1:D1000")["values"]
+        values.pop(0)  # remove header
 
-        app_context.devices = defaultdict(list)
+        devices = [(d[0], f"{d[1]}{d[2]}", f"{int(d[3]):02d}") for d in values]
 
-        for i in range(groups_cnt):
-            group = names[i]
-            app_context.devices[group] = [v[i] for v in values if v[i]]
-
-        return app_context.devices
+        return devices
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pprint import pprint
 
     svc = GCloudService()
-    svc._load_devices_list()
-    svc._load_open_problems()
+    _devices = svc.load_devices()
+    _problems = svc.load_problems_kinds()
+    _solutions = svc.load_solutions_kinds()
 
-    # pprint(svc.list_sheet_files())
-
-    # svc.load_problems_list()
-    # svc.load_solutions_list()
-
-    # print(app_context.problems)
-    # print(app_context.solutions)
-    # pprint(app_context.devices)
+    # print(_problems)
+    # print(_solutions)
+    pprint(_devices)

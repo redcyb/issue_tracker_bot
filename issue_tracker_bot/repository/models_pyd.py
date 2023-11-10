@@ -14,7 +14,7 @@ from sqlalchemy_utils.types import Choice
 class UserBase(BaseModel):
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
-    id: int
+    id: str
     name: str
     role: Union[str, Choice, Enum]
     records: List = []
@@ -38,10 +38,9 @@ class UserCreate(UserBase):
 
 
 class DeviceBase(BaseModel):
-    id: Optional[int] = None
+    id: str
     name: str
     group: str
-    serial_number: Optional[str] = None
     created_at: datetime
 
 
@@ -58,8 +57,8 @@ class RecordBase(BaseModel):
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     id: Optional[int] = None
-    reporter_id: int
-    device_id: int
+    reporter_id: str
+    device_id: str
     text: str
     kind: Union[str, Choice, Enum]
     created_at: datetime
@@ -89,6 +88,7 @@ class Record(RecordBase):
 
 class PredefinedMessage(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    id: str
     text: str
     kind: Union[str, Choice, Enum]
 
