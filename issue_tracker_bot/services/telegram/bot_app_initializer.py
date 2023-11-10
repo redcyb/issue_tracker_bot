@@ -34,6 +34,7 @@ def create_application():
     application.add_handler(CommandHandler("problem", srv.handle_init_problem_request))
     application.add_handler(CommandHandler("solution", srv.handle_init_solution_request))
     application.add_handler(CommandHandler("open_problems", srv.handle_open_problems_request))
+    application.add_handler(CommandHandler("sync_context", srv.handle_sync_context_request))
     application.add_handler(CommandHandler("status", srv.handle_init_status_request))
     application.add_handler(CallbackQueryHandler(srv.handle_button))
     application.add_handler(MessageHandler(None, srv.handle_text))

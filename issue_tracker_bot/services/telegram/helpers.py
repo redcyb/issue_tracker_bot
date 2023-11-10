@@ -8,12 +8,17 @@ from telegram import InlineKeyboardMarkup
 
 from issue_tracker_bot import settings
 from issue_tracker_bot.repository import commons
+from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import models_pyd as mp
-from issue_tracker_bot.repository import operations as ROPS
+from issue_tracker_bot.repository import operations as rops
 from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.message_processing import RecordBuilder
+from issue_tracker_bot.services.sync_context_helpers import sync_devices_with_gdoc
+from issue_tracker_bot.services.sync_context_helpers import (
+    sync_predefined_messages_with_gdoc,
+)
 from issue_tracker_bot.services.telegram import app_context_helpers
 
 # Fresh way to enrich context
@@ -106,9 +111,9 @@ def build_predefined_options_keyboard(device_id, action):
 
     # fmt: off
     options = (
-        ROPS.get_predefined_problems()
+        rops.get_predefined_problems()
         if action == Actions.PROBLEM.value else
-        ROPS.get_predefined_solutions()
+        rops.get_predefined_solutions()
     )
     # fmt: on
 
@@ -154,7 +159,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
     action = msg.strip().lower()
 
     if action == Actions.SOLUTION.value:
-        problematic_devices = get_grouped_devices(ROPS.get_devices_with_open_problems())
+        problematic_devices = get_grouped_devices(rops.get_devices_with_open_problems())
         reply_markup = build_device_list_keyboard(problematic_devices, action)
         if problematic_devices:
             await make_response(
@@ -173,7 +178,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
         return
 
     if action == Actions.PROBLEM.value:
-        grouped_devices = get_grouped_devices(ROPS.get_devices())
+        grouped_devices = get_grouped_devices(rops.get_devices())
         reply_markup = build_device_list_keyboard(grouped_devices, msg)
         await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
@@ -184,7 +189,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
         return
 
     if action in Actions.STATUS.value:
-        grouped_devices = get_grouped_reported_devices(ROPS.get_devices())
+        grouped_devices = get_grouped_reported_devices(rops.get_devices())
         reply_markup = build_device_list_keyboard(grouped_devices, msg)
         await make_response(
             text=f"Дія: {msg}. Оберіть пристрій",
@@ -195,7 +200,7 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
         return
 
     if action == Actions.OPEN_PROBLEMS.value:
-        devices = ROPS.get_devices_with_open_problems()
+        devices = rops.get_devices_with_open_problems()
 
         result = f"\nВсього відкрито проблем {len(devices)}:\n"
         result += "\n".join(
@@ -220,7 +225,7 @@ async def process_status_action_selected(device_id, query):
     # gcloud = GCloudService()
     # report = gcloud.report_for_page(f"DEV_{device}")
 
-    device = ROPS.get_device(device_id)
+    device = rops.get_device(device_id)
     records = device.records
 
     resp = f'Статус для пристрою "{build_device_full_name(device)}":'
@@ -272,7 +277,7 @@ async def make_text_to_record(txt, update):
     user_id = str(tg_user.id) if tg_user.id else None
     author_str = tg_user.username or tg_user.full_name
 
-    user = ROPS.get_or_create_user(
+    user = rops.get_or_create_user(
         mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
     )
 
@@ -290,9 +295,9 @@ async def make_text_to_record(txt, update):
         user.name,
     )
 
-    device = ROPS.get_device(obj_id=device_id)
+    device = rops.get_device(obj_id=device_id)
 
-    record = ROPS.create_record(
+    record = rops.create_record(
         mp.RecordCreate(
             reporter_id=user_id,
             device_id=device.id,
@@ -316,7 +321,7 @@ async def make_button_to_record(message_id, query, update):
     user_id = str(tg_user.id) if tg_user.id else None
     author_str = tg_user.username or tg_user.full_name
 
-    user = ROPS.get_or_create_user(
+    user = rops.get_or_create_user(
         mp.UserCreate(id=user_id, name=author_str, role=commons.Roles.reporter)
     )
 
@@ -336,10 +341,10 @@ async def make_button_to_record(message_id, query, update):
         message_id,
     )
 
-    device = ROPS.get_device(obj_id=device_id)
-    message = ROPS.get_predefined_message(obj_id=message_id)
+    device = rops.get_device(obj_id=device_id)
+    message = rops.get_predefined_message(obj_id=message_id)
 
-    ROPS.create_record(
+    rops.create_record(
         mp.RecordCreate(
             reporter_id=user_id,
             device_id=device.id,
@@ -367,7 +372,7 @@ async def process_option_for_action_selected_button(msg, query, update):
     option, action, device_id = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
 
-    device = ROPS.get_device(obj_id=device_id)
+    device = rops.get_device(obj_id=device_id)
 
     if option == str(CUSTOM_ACTION_OPTION.id):
         resp = f'Дія: "{action}". Пристрій: "{build_device_full_name(device)}". Введіть опис:'
@@ -375,3 +380,9 @@ async def process_option_for_action_selected_button(msg, query, update):
         return
 
     await make_button_to_record(option, query, update)
+
+
+def sync_context():
+    database.Base.metadata.create_all(bind=database.engine)
+    sync_devices_with_gdoc()
+    sync_predefined_messages_with_gdoc()
