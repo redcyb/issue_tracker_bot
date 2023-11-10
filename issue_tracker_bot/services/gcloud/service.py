@@ -253,12 +253,12 @@ class GCloudService:
     def load_problems_kinds(self):
         values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:B1000")["values"]
         values.pop(0)  # remove header
-        return [v[0] for v in values]
+        return values
 
     def load_solutions_kinds(self):
         values = self.load_range(CONTEXT_SHEET_ID, "solutions!A1:B1000")["values"]
         values.pop(0)  # remove header
-        return [v[0] for v in values]
+        return values
 
     def load_devices(self):
         values = self.load_range(CONTEXT_SHEET_ID, "devices!A1:D1000")["values"]

@@ -223,7 +223,7 @@ async def process_status_action_selected(device_id, query):
 async def process_device_for_action_selected_button(msg, query):
     action, device_id = msg.split(MESSAGE_SEPARATOR)
     action = action.strip().lower()
-    user_id = query.from_user.id
+    user_id = str(query.from_user.id) if query.from_user.id else None
 
     if action == Actions.STATUS.value:
         await process_status_action_selected(device_id, query)
@@ -248,7 +248,7 @@ async def make_text_to_record(txt, update):
     bot = update.get_bot()
 
     tg_user = update.message.from_user
-    user_id = tg_user.id
+    user_id = str(tg_user.id) if tg_user.id else None
     author_str = tg_user.username or tg_user.full_name
 
     user = ROPS.get_or_create_user(
@@ -261,7 +261,7 @@ async def make_text_to_record(txt, update):
         )
         return
 
-    record_cached = initiated.pop(user.id)
+    record_cached = initiated.pop(user_id)
 
     device_id, action, author = (
         record_cached["device"],
@@ -273,7 +273,7 @@ async def make_text_to_record(txt, update):
 
     record = ROPS.create_record(
         mp.RecordCreate(
-            reporter_id=user.id,
+            reporter_id=user_id,
             device_id=device.id,
             kind=ACTION_TO_MESSAGE_KIND_MAP[action],
             text=txt,
@@ -292,7 +292,7 @@ async def make_text_to_record(txt, update):
 
 async def make_button_to_record(message_id, query, update):
     tg_user = query.from_user
-    user_id = tg_user.id
+    user_id = str(tg_user.id) if tg_user.id else None
     author_str = tg_user.username or tg_user.full_name
 
     user = ROPS.get_or_create_user(
@@ -306,7 +306,7 @@ async def make_button_to_record(message_id, query, update):
 
     # Writing record
 
-    record = initiated.pop(user.id)
+    record = initiated.pop(user_id)
 
     device_id, action, author, message_id = (
         record["device"],
@@ -320,7 +320,7 @@ async def make_button_to_record(message_id, query, update):
 
     ROPS.create_record(
         mp.RecordCreate(
-            reporter_id=user.id,
+            reporter_id=user_id,
             device_id=device.id,
             kind=message.kind,
             text=message.text,

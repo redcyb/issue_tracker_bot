@@ -43,7 +43,6 @@ def create_device(data_obj: dict):
 def update_devices_in_batch(db, devices):
     if not devices:
         return
-
     db.execute(update(md.Device), devices)
     db.commit()
 
@@ -52,7 +51,6 @@ def update_devices_in_batch(db, devices):
 def create_devices_in_batch(db, devices):
     if not devices:
         return
-
     db.execute(insert(md.Device), devices)
     db.commit()
 
@@ -62,6 +60,22 @@ def create_devices_in_batch(db, devices):
 @database.create_commit_refresh
 def create_predefined_message(data_obj: dict):
     return md.PredefinedMessage(**data_obj)
+
+
+@database.inject_db_session
+def create_predefined_messages_in_batch(db, messages):
+    if not messages:
+        return
+    db.execute(insert(md.PredefinedMessage), messages)
+    db.commit()
+
+
+@database.inject_db_session
+def update_predefined_messages_in_batch(db, messages):
+    if not messages:
+        return
+    db.execute(update(md.PredefinedMessage), messages)
+    db.commit()
 
 
 @database.pydantic_or_dict
