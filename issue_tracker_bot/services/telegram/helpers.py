@@ -55,7 +55,7 @@ MESSAGE_KIND_TO_ACTION_MAP = {
 
 
 def build_device_full_name(device):
-    return f"{device.group}:{device.name}"
+    return f"{device.group}-{device.name}"
 
 
 def get_grouped_devices(devices):
