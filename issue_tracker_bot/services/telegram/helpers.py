@@ -32,6 +32,7 @@ initiated = {}
 processed = defaultdict(list)
 
 DEVICES_IN_ROW = 4
+UNGROUPED_DEVICES_LIMIT = 4
 OPTIONS_IN_ROW = 2
 MESSAGE_SEPARATOR = "|"
 MAX_OPTION_BYTES_LEN = 41
@@ -82,9 +83,13 @@ def get_grouped_reported_devices(devices):
     return result
 
 
-def build_device_list_keyboard(devices_groups, action):
+def build_device_list_keyboard(devices_groups, action, group=None):
     keyboard = []
     cmd = MenuCommandStates.DEVICE_SELECTED_FOR_ACTION.value
+
+    if group:
+        devices_groups = {group: devices_groups[group]}
+
     for group, devices in devices_groups.items():
         keyboard.append([])
         while devices:
@@ -102,6 +107,28 @@ def build_device_list_keyboard(devices_groups, action):
                     for device in batch
                 ]
             )
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_group_list_keyboard(devices_groups, action):
+    keyboard = []
+    cmd = MenuCommandStates.DEVICE_GROUP_SELECTED_FOR_ACTION.value
+    groups = list(devices_groups.keys())
+    while groups:
+        batch, groups = (groups[:DEVICES_IN_ROW], groups[DEVICES_IN_ROW:])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    group,
+                    callback_data=(
+                        f"{cmd}{MESSAGE_SEPARATOR}"
+                        f"{action}{MESSAGE_SEPARATOR}"
+                        f"{group}"
+                    ),
+                )
+                for group in batch
+            ]
+        )
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -155,33 +182,57 @@ async def make_response(text, reply_markup, query=None, update=None):
     raise Exception("Either query or update must be provided.")
 
 
-async def process_initial_action_selected_button(msg, query=None, update=None):
+def prepare_group_or_device_list(grouped_devices, action, group):
+    len_devices = sum(len(g) for g in grouped_devices.values())
+
+    if len_devices <= UNGROUPED_DEVICES_LIMIT:
+        reply_markup = build_device_list_keyboard(grouped_devices, action)
+        return f"Дія: {action}. Оберіть пристрій", reply_markup
+
+    if group:
+        reply_markup = build_device_list_keyboard(grouped_devices, action, group)
+        return f"Дія: {action}. Оберіть пристрій", reply_markup
+
+    reply_markup = build_group_list_keyboard(grouped_devices, action)
+    return f"Дія: {action}. Оберіть групу", reply_markup
+
+
+async def process_initial_action_selected_button(
+    msg, query=None, update=None, group=None
+):
     action = msg.strip().lower()
 
     if action == Actions.SOLUTION.value:
-        problematic_devices = get_grouped_devices(rops.get_devices_with_open_problems())
-        reply_markup = build_device_list_keyboard(problematic_devices, action)
-        if problematic_devices:
-            await make_response(
-                text=f"Дія: {msg}. Оберіть пристрій",
-                reply_markup=reply_markup,
-                query=query,
-                update=update,
-            )
-        else:
+        grouped_devices = get_grouped_devices(rops.get_devices_with_open_problems())
+
+        if not grouped_devices:
             await make_response(
                 text=f"Не знайдено жодного пристрою із відкритою проблемою",
                 reply_markup=None,
                 query=query,
                 update=update,
             )
+            return
+
+        resource_message, reply_markup = prepare_group_or_device_list(
+            grouped_devices, action, group
+        )
+        await make_response(
+            text=resource_message,
+            reply_markup=reply_markup,
+            query=query,
+            update=update,
+        )
         return
 
     if action == Actions.PROBLEM.value:
         grouped_devices = get_grouped_devices(rops.get_devices())
-        reply_markup = build_device_list_keyboard(grouped_devices, msg)
+
+        resource_message, reply_markup = prepare_group_or_device_list(
+            grouped_devices, action, group
+        )
         await make_response(
-            text=f"Дія: {msg}. Оберіть пристрій",
+            text=resource_message,
             reply_markup=reply_markup,
             query=query,
             update=update,
@@ -190,9 +241,12 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
 
     if action in Actions.STATUS.value:
         grouped_devices = get_grouped_reported_devices(rops.get_devices())
-        reply_markup = build_device_list_keyboard(grouped_devices, msg)
+
+        resource_message, reply_markup = prepare_group_or_device_list(
+            grouped_devices, action, group
+        )
         await make_response(
-            text=f"Дія: {msg}. Оберіть пристрій",
+            text=resource_message,
             reply_markup=reply_markup,
             query=query,
             update=update,
@@ -222,9 +276,6 @@ async def process_initial_action_selected_button(msg, query=None, update=None):
 
 
 async def process_status_action_selected(device_id, query):
-    # gcloud = GCloudService()
-    # report = gcloud.report_for_page(f"DEV_{device}")
-
     device = rops.get_device(device_id)
     records = device.records
 
@@ -266,6 +317,13 @@ async def process_device_for_action_selected_button(msg, query):
     await query.edit_message_text(
         text=f"Оберіть повідомлення із списку", reply_markup=reply_markup
     )
+
+
+async def process_group_for_action_selected_button(msg, query):
+    action, group = msg.split(MESSAGE_SEPARATOR)
+    action = action.strip().lower()
+
+    await process_initial_action_selected_button(action, query=query, group=group)
 
 
 async def make_text_to_record(txt, update):
