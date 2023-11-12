@@ -59,6 +59,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await H.process_device_for_action_selected_button(msg, query=query)
         return
 
+    if cmd == H.MenuCommandStates.DEVICE_GROUP_SELECTED_FOR_ACTION.value:
+        await H.process_group_for_action_selected_button(msg, query=query)
+        return
+
     if cmd == H.MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value:
         await H.process_option_for_action_selected_button(
             msg, query=query, update=update
