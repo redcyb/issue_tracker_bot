@@ -22,7 +22,7 @@ def sync_devices_with_gdoc():
             to_create.append({"id": did, "group": g_device[1], "name": g_device[2]})
         gdoc_ids.add(did)
 
-    to_delete = [{"id": mid} for mid in existing_ids - gdoc_ids]
+    to_delete = list(existing_ids - gdoc_ids)
 
     rops.update_devices_in_batch(to_update)
     rops.create_devices_in_batch(to_create)
@@ -57,7 +57,7 @@ def sync_predefined_messages_with_gdoc():
 
     to_update = to_update_p + to_update_s
     to_create = to_create_p + to_create_s
-    to_delete = [{"id": mid} for mid in existing_ids - gdoc_ids]
+    to_delete = list(existing_ids - gdoc_ids)
 
     rops.update_predefined_messages_in_batch(to_update)
     rops.create_predefined_messages_in_batch(to_create)

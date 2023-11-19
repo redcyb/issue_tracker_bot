@@ -60,7 +60,9 @@ def create_devices_in_batch(db, devices):
 def delete_devices_in_batch(db, devices):
     if not devices:
         return
-    db.execute(delete(md.Device), devices)
+
+    cmd = delete(md.Device).where(md.Device.id.in_(devices))
+    db.execute(cmd)
     db.commit()
 
 
@@ -83,7 +85,9 @@ def create_predefined_messages_in_batch(db, messages):
 def delete_predefined_messages_in_batch(db, messages):
     if not messages:
         return
-    db.execute(delete(md.PredefinedMessage), messages)
+
+    cmd = delete(md.PredefinedMessage).where(md.PredefinedMessage.id.in_(messages))
+    db.execute(cmd)
     db.commit()
 
 
