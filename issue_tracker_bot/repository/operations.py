@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Union
 
+from sqlalchemy import delete
 from sqlalchemy import insert
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
@@ -55,6 +56,14 @@ def create_devices_in_batch(db, devices):
     db.commit()
 
 
+@database.inject_db_session
+def delete_devices_in_batch(db, devices):
+    if not devices:
+        return
+    db.execute(delete(md.Device), devices)
+    db.commit()
+
+
 @database.pydantic_or_dict
 @database.inject_db_session
 @database.create_commit_refresh
@@ -67,6 +76,14 @@ def create_predefined_messages_in_batch(db, messages):
     if not messages:
         return
     db.execute(insert(md.PredefinedMessage), messages)
+    db.commit()
+
+
+@database.inject_db_session
+def delete_predefined_messages_in_batch(db, messages):
+    if not messages:
+        return
+    db.execute(delete(md.PredefinedMessage), messages)
     db.commit()
 
 
