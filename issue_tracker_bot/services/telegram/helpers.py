@@ -14,7 +14,6 @@ from issue_tracker_bot.repository import operations as rops
 from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
-from issue_tracker_bot.services.message_processing import RecordBuilder
 from issue_tracker_bot.services.sync_context_helpers import sync_devices_with_gdoc
 from issue_tracker_bot.services.sync_context_helpers import (
     sync_predefined_messages_with_gdoc,
@@ -47,7 +46,8 @@ DEFAULT_HELP_MESSAGE = (
 )
 
 CustomActionOption = namedtuple("CustomActionOption", ["id", "text"])
-CUSTOM_ACTION_OPTION = CustomActionOption(0, "Свій варіант")
+CUSTOM_ACTION_OPTION = CustomActionOption(0, "💎Свій варіант")
+DONE_ACTION_OPTION = CustomActionOption(-1, "👍ЗБЕРЕГТИ 👌")
 
 ACTION_TO_MESSAGE_KIND_MAP = {
     Actions.PROBLEM.value: commons.ReportKinds.problem.value,
@@ -132,7 +132,8 @@ def build_group_list_keyboard(devices_groups, action):
     return InlineKeyboardMarkup(keyboard)
 
 
-def build_predefined_options_keyboard(device_id, action):
+def build_predefined_options_keyboard(device_id, action, selected=None):
+    selected = selected or []
     keyboard = []
     cmd = MenuCommandStates.OPTION_SELECTED_FOR_ACTION.value
 
@@ -144,14 +145,16 @@ def build_predefined_options_keyboard(device_id, action):
     )
     # fmt: on
 
-    options += [CUSTOM_ACTION_OPTION]
+    final_options = [
+        CUSTOM_ACTION_OPTION,
+        DONE_ACTION_OPTION,
+    ]
 
-    while options:
-        batch, options = (options[:OPTIONS_IN_ROW], options[OPTIONS_IN_ROW:])
+    def update_keyboard_with_collection(_collection):
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    option.text,
+                    f"✅{option.text}" if option.id in selected else option.text,
                     callback_data=(
                         f"{cmd}{MESSAGE_SEPARATOR}"
                         f"{option.id}{MESSAGE_SEPARATOR}"
@@ -159,9 +162,15 @@ def build_predefined_options_keyboard(device_id, action):
                         f"{device_id}"
                     ),
                 )
-                for option in batch
+                for option in _collection
             ]
         )
+
+    while options:
+        batch, options = (options[:OPTIONS_IN_ROW], options[OPTIONS_IN_ROW:])
+        update_keyboard_with_collection(batch)
+
+    update_keyboard_with_collection(final_options)
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -284,12 +293,10 @@ async def process_status_action_selected(device_id, query):
     if not records:
         resp = f'\n\nНема записів для пристрою "{build_device_full_name(device)}"'
     else:
-        # 10-29-2023 12:55:48 redcyb'
-        # проблема : Проблема 1 Use of language
-
         resp += "".join(
             [
-                f"\n\n{r.created_at.strftime(settings.REPORT_DT_FORMAT)} {r.reporter.name}\n{r.kind} : {r.text}"
+                f"\n\n{r.created_at.strftime(settings.REPORT_DT_FORMAT)} {r.reporter.name}\n"
+                f"{MESSAGE_KIND_TO_ACTION_MAP[r.kind].capitalize()}: {r.text}"
                 for r in records
             ]
         )
@@ -310,10 +317,10 @@ async def process_device_for_action_selected_button(msg, query):
         "action": action,
         "device": device_id,
         "time": datetime.datetime.now().strftime(settings.REPORT_DT_FORMAT),
-        "message": None,
+        "messages": [],
     }
 
-    reply_markup = build_predefined_options_keyboard(device_id, action)
+    reply_markup = build_predefined_options_keyboard(device_id, action, selected=[])
     await query.edit_message_text(
         text=f"Оберіть повідомлення із списку", reply_markup=reply_markup
     )
@@ -384,7 +391,7 @@ async def make_button_to_record(message_id, query, update):
     )
 
     # Check if not initiated then quit
-    if not initiated:
+    if user_id not in initiated or not initiated[user_id]["messages"]:
         await query.edit_message_text(text=DEFAULT_HELP_MESSAGE)
         return
 
@@ -392,38 +399,63 @@ async def make_button_to_record(message_id, query, update):
 
     record = initiated.pop(user_id)
 
-    device_id, action, author, message_id = (
+    device_id, action, messages = (
         record["device"],
         record["action"],
-        author_str,
-        message_id,
+        record["messages"],
     )
 
     device = rops.get_device(obj_id=device_id)
-    message = rops.get_predefined_message(obj_id=message_id)
+
+    db_messages = {m.id: m for m in rops.get_predefined_messages() if m.id in messages}
+    messages = {mid: db_messages[mid] for mid in messages}
+
+    kind = ACTION_TO_MESSAGE_KIND_MAP[action]
+    text = " +\n".join(m.text for m in messages.values())
 
     rops.create_record(
         mp.RecordCreate(
             reporter_id=user_id,
             device_id=device.id,
-            kind=message.kind,
-            text=message.text,
+            kind=kind,
+            text=text,
         )
     )
 
-    builder = RecordBuilder()
-    builder.build(device.name, action, author, message.text)
-
     # Responding to user
-
     result_text = (
         f"{record['time']}\n"
         f'Прийнято запис від "{author_str}"\n'
         f'для пристроя "{build_device_full_name(device)}":\n\n'
-        f"\"{record['action']} :: {message.text}\" "
+        f"\"{record['action'].capitalize()}: {text}\""
     )
 
     await query.edit_message_text(text=result_text)
+
+
+async def handle_multiselect_for_action(query, update, message_id, device_id, action):
+    tg_user = query.from_user
+    user_id = str(tg_user.id) if tg_user.id else None
+
+    # Check if not initiated then quit
+    if user_id not in initiated:
+        await query.edit_message_text(text=DEFAULT_HELP_MESSAGE)
+        return
+
+    # Adding messages to user's messages
+    record = initiated[user_id]
+
+    if message_id not in record["messages"]:
+        record["messages"].append(message_id)
+    else:
+        record["messages"].remove(message_id)
+
+    reply_markup = build_predefined_options_keyboard(
+        device_id, action, selected=record["messages"]
+    )
+    await query.edit_message_text(
+        text=f"Оберіть повідомлення із списку", reply_markup=reply_markup
+    )
 
 
 async def process_option_for_action_selected_button(msg, query, update):
@@ -432,12 +464,16 @@ async def process_option_for_action_selected_button(msg, query, update):
 
     device = rops.get_device(obj_id=device_id)
 
+    if option == str(DONE_ACTION_OPTION.id):
+        await make_button_to_record(option, query, update)
+        return
+
     if option == str(CUSTOM_ACTION_OPTION.id):
         resp = f'Дія: "{action}". Пристрій: "{build_device_full_name(device)}". Введіть опис:'
         await query.edit_message_text(text=resp)
         return
 
-    await make_button_to_record(option, query, update)
+    await handle_multiselect_for_action(query, update, option, device_id, action)
 
 
 def sync_context():
