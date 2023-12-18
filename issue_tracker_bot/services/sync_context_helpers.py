@@ -32,36 +32,25 @@ def sync_devices_with_gdoc():
 def sync_predefined_messages_with_gdoc():
     existing_messages = {em.id: em for em in rops.get_predefined_messages()}
     existing_ids = set(existing_messages.keys())
-    gdoc_ids = set()
+    rops.delete_predefined_messages_in_batch(list(existing_ids))
 
     def get_objects_for_processing(kind, getter):
-        _to_update = []
         _to_create = []
         _gdoc_messages = {f"{kind.value}-{md[0]}": md for md in getter()}
 
         for mid, g_message in _gdoc_messages.items():
-            if mid in existing_messages:
-                _to_update.append({"id": mid, "text": g_message[1], "kind": kind.value})
-            else:
-                _to_create.append({"id": mid, "text": g_message[1], "kind": kind.value})
-            gdoc_ids.add(mid)
+            _to_create.append({"id": mid, "text": g_message[1], "kind": kind.value})
 
-        return _to_update, _to_create
+        return _to_create
 
-    to_update_p, to_create_p = get_objects_for_processing(
+    to_create_p = get_objects_for_processing(
         commons.ReportKinds.problem, gcloud.load_problems_kinds
     )
-    to_update_s, to_create_s = get_objects_for_processing(
+    to_create_s = get_objects_for_processing(
         commons.ReportKinds.solution, gcloud.load_solutions_kinds
     )
 
-    to_update = to_update_p + to_update_s
-    to_create = to_create_p + to_create_s
-    to_delete = list(existing_ids - gdoc_ids)
-
-    rops.update_predefined_messages_in_batch(to_update)
-    rops.create_predefined_messages_in_batch(to_create)
-    rops.delete_predefined_messages_in_batch(to_delete)
+    rops.create_predefined_messages_in_batch(to_create_p + to_create_s)
 
 
 if __name__ == "__main__":
