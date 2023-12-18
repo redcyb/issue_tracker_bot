@@ -30,9 +30,9 @@ def sync_devices_with_gdoc():
 
 
 def sync_predefined_messages_with_gdoc():
-    existing_messages = {em.id: em for em in rops.get_predefined_messages()}
-    existing_ids = set(existing_messages.keys())
-    rops.delete_predefined_messages_in_batch(list(existing_ids))
+    rops.delete_predefined_messages_in_batch(
+        [em.id for em in rops.get_predefined_messages()]
+    )
 
     def get_objects_for_processing(kind, getter):
         _to_create = []
