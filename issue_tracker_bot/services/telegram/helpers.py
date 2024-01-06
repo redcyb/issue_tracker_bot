@@ -14,6 +14,7 @@ from issue_tracker_bot.repository import operations as rops
 from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services import MenuCommandStates
 from issue_tracker_bot.services.context import AppContext
+from issue_tracker_bot.services.data_export import export_reports_to_gdoc
 from issue_tracker_bot.services.sync_context_helpers import sync_devices_with_gdoc
 from issue_tracker_bot.services.sync_context_helpers import (
     sync_predefined_messages_with_gdoc,
@@ -480,3 +481,8 @@ def sync_context():
     database.Base.metadata.create_all(bind=database.engine)
     sync_devices_with_gdoc()
     sync_predefined_messages_with_gdoc()
+
+
+def export_reports():
+    database.Base.metadata.create_all(bind=database.engine)
+    export_reports_to_gdoc()

@@ -125,3 +125,17 @@ async def handle_sync_context_request(
         await update.message.reply_text(f"Error during handling request 'sync_context'")
     else:
         await update.message.reply_text(f"Контекст успішно синхронізовано")
+
+
+async def handle_export_reports_request(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    try:
+        H.export_reports()
+    except Exception:
+        logger.exception("")
+        await update.message.reply_text(
+            f"Error during handling request 'export_reports'"
+        )
+    else:
+        await update.message.reply_text(f"Дані успішно експортовано")

@@ -17,6 +17,7 @@ if __name__ == "__main__":
         BotCommand(command="/status", description="Отримати поточний статус пристрою"),
         BotCommand(command="/open_problems", description="Отримати список усіх відкритих проблем"),
         BotCommand(command="/sync_context", description="(Адмін) Синхронізувати контекст"),
+        BotCommand(command="/export_reports", description="(Адмін) Експортувати дані"),
         BotCommand(command="/help", description="Отримати підказу про використання"),
     ]
     # fmt: on
