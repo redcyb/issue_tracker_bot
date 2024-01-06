@@ -1,9 +1,9 @@
 from issue_tracker_bot.repository import commons
 from issue_tracker_bot.repository import database
 from issue_tracker_bot.repository import operations as rops
-from issue_tracker_bot.services import GCloudService
+from issue_tracker_bot.services import ContextLoader
 
-gcloud = GCloudService()
+gcloud = ContextLoader()
 
 
 def sync_devices_with_gdoc():

@@ -1,16 +1,15 @@
 import logging
-from collections import defaultdict
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from issue_tracker_bot import settings
-from issue_tracker_bot.services import Actions
 from issue_tracker_bot.services.context import AppContext
 from issue_tracker_bot.services.gcloud.auth import get_credentials
 from issue_tracker_bot.services.message_processing import RecordBuilder
 
 TRACKING_SHEET_ID = settings.TRACKING_SHEET_ID
+SNAPSHOTS_SHEET_ID = settings.SNAPSHOTS_SHEET_ID
 CONTEXT_SHEET_ID = settings.CONTEXT_SHEET_ID
 FOLDER_ID = settings.FOLDER_ID
 
@@ -26,6 +25,7 @@ class GCloudService:
 
     drive_service = None
     sheet_service = None
+    sheet_id = None
 
     @classmethod
     def __new__(cls, *args, **kwargs):
@@ -41,12 +41,6 @@ class GCloudService:
         self.sheet_service = build(
             "sheets", "v4", credentials=self.credentials, cache_discovery=False
         )
-
-    def enrich_app_context(self):
-        self.load_devices()
-        self.load_problems_kinds()
-        self.load_solutions_kinds()
-        self.load_open_problems()
 
     def list_sheet_files(self):
         if not self.credentials:
@@ -80,7 +74,7 @@ class GCloudService:
         if not self.credentials:
             raise RuntimeError("No valid credentials found for 'sheets'")
 
-        current_range_state = self.load_range(TRACKING_SHEET_ID, page_name)
+        current_range_state = self.load_range(self.sheet_id, page_name)
         if not current_range_state:
             return None
 
@@ -177,48 +171,9 @@ class GCloudService:
                 f"Request to sheets.batchUpdate was not successful: {exc}"
             )
 
-    def manage_problem_in_cache(self, action, device, problem):
-        if action == Actions.PROBLEM.value:
-            app_context.open_problems[device] = problem
-        if action == Actions.SOLUTION.value:
-            try:
-                del app_context.open_problems[device]
-            except KeyError:
-                ...
-
-    def commit_record(self, device, action, author, message) -> str:
-        builder = RecordBuilder()
-        builder.build(device, action, author, message)
-
-        current_range_state = self.load_range(TRACKING_SHEET_ID, builder.page)
-
-        if not current_range_state:
-            self.create_page(TRACKING_SHEET_ID, builder.page)
-            current_range_state = self.load_range(TRACKING_SHEET_ID, builder.page)
-
-        try:
-            last_record_num = len(current_range_state["values"]) + 1
-        except KeyError:
-            last_record_num = 1
-
-        target_range = f"'{builder.page}'!A{last_record_num}:E{last_record_num}"
-
-        try:
-            self.patch_sheet(TRACKING_SHEET_ID, target_range, builder.record)
-        except Exception as exc:
-            logging.exception("")
-            return f"Error: {exc}"
-
-        self.manage_problem_in_cache(builder.action, builder.device, builder.record)
-        answer = f"Record was created with message '{message}' on page '{builder.page}'"
-        logging.info(answer)
-        return answer
-
     def list_all_sheets(self):
         sheet_metadata = (
-            self.sheet_service.spreadsheets()
-            .get(spreadsheetId=TRACKING_SHEET_ID)
-            .execute()
+            self.sheet_service.spreadsheets().get(spreadsheetId=self.sheet_id).execute()
         )
         sheets = sheet_metadata.get("sheets", "")
         return [
@@ -228,27 +183,41 @@ class GCloudService:
             for sh in sheets
         ]
 
-    def load_open_problems(self):
-        def _get_device(_rng: str):
-            return _rng.split("!")[0].lstrip("DEV_")
 
-        def _is_last_action_problem(_vals: list):
-            if not _vals:
-                # Case with empty sheet
-                return False
-            return _vals[-1][3].lower() == Actions.PROBLEM.value
+class ReportTracker(GCloudService):
+    sheet_id = TRACKING_SHEET_ID
 
-        ranges = [f'{sh["title"]}!A:Z' for sh in self.list_all_sheets()]
-        all_values = self.load_many_ranges(TRACKING_SHEET_ID, ranges)
-        all_values = all_values["valueRanges"]
+    def commit_record(self, device, action, author, message) -> str:
+        builder = RecordBuilder()
+        builder.build(device, action, author, message)
 
-        device_values_map = {
-            _get_device(sh["range"]): sh["values"]
-            for sh in all_values
-            if _is_last_action_problem(sh.get("values", []))
-        }
+        current_range_state = self.load_range(self.sheet_id, builder.page)
 
-        return device_values_map
+        if not current_range_state:
+            self.create_page(self.sheet_id, builder.page)
+            current_range_state = self.load_range(self.sheet_id, builder.page)
+
+        try:
+            last_record_num = len(current_range_state["values"]) + 1
+        except KeyError:
+            last_record_num = 1
+
+        target_range = f"'{builder.page}'!A{last_record_num}:E{last_record_num}"
+
+        try:
+            self.patch_sheet(self.sheet_id, target_range, builder.record)
+        except Exception as exc:
+            logging.exception("")
+            return f"Error: {exc}"
+
+        self.manage_problem_in_cache(builder.action, builder.device, builder.record)
+        answer = f"Record was created with message '{message}' on page '{builder.page}'"
+        logging.info(answer)
+        return answer
+
+
+class ContextLoader(GCloudService):
+    sheet_id = CONTEXT_SHEET_ID
 
     def load_problems_kinds(self):
         values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:B1000")["values"]
@@ -269,10 +238,17 @@ class GCloudService:
         return devices
 
 
+class Snapshotter(GCloudService):
+    sheet_id = SNAPSHOTS_SHEET_ID
+
+    def export_records(self, sheet_name: str, data: list):
+        ...
+
+
 if __name__ == "__main__":
     from pprint import pprint
 
-    svc = GCloudService()
+    svc = ContextLoader()
     _devices = svc.load_devices()
     _problems = svc.load_problems_kinds()
     _solutions = svc.load_solutions_kinds()
