@@ -7,8 +7,11 @@ from typing import Union
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
+from pydantic import field_serializer
 from pydantic import field_validator
 from sqlalchemy_utils.types import Choice
+
+from issue_tracker_bot import settings
 
 
 class UserBase(BaseModel):
@@ -84,6 +87,31 @@ class Record(RecordBase):
     model_config = ConfigDict(from_attributes=True)
     reporter: Optional[User] = None
     device: Optional[Device] = None
+
+
+class RecordExport(RecordBase):
+    model_config = ConfigDict(from_attributes=True)
+    reporter: Optional[User] = None
+    device: Optional[Device] = None
+
+    @field_serializer("reporter")
+    @staticmethod
+    def reporter_to_name(v: Any) -> str:
+        if isinstance(v, User):
+            return str(v.name or v.id)
+        return v
+
+    @field_serializer("device")
+    @staticmethod
+    def device_to_name(v: Any) -> str:
+        if isinstance(v, Device):
+            return f"{v.id} :: {v.group}-{v.name}"
+        return v
+
+    @field_serializer("created_at")
+    @staticmethod
+    def serialize_dt(v: datetime, _info):
+        return v.strftime(settings.REPORT_DT_FORMAT)
 
 
 class PredefinedMessage(BaseModel):

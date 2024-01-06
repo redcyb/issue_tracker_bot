@@ -25,7 +25,7 @@ class GCloudService:
 
     drive_service = None
     sheet_service = None
-    sheet_id = None
+    spreadsheet_id = None
 
     @classmethod
     def __new__(cls, *args, **kwargs):
@@ -74,7 +74,7 @@ class GCloudService:
         if not self.credentials:
             raise RuntimeError("No valid credentials found for 'sheets'")
 
-        current_range_state = self.load_range(self.sheet_id, page_name)
+        current_range_state = self.load_range(self.spreadsheet_id, page_name)
         if not current_range_state:
             return None
 
@@ -89,11 +89,15 @@ class GCloudService:
             [f"{v[1]} {v[2]}\n{v[3].ljust(8)} : {v[4]}\n" for v in values if v]
         )
 
-    def load_range(self, sheet_id, range_):
+    def load_range(self, spreadsheet_id, range_):
         sheets = self.sheet_service.spreadsheets()
 
         try:
-            result = sheets.values().get(spreadsheetId=sheet_id, range=range_).execute()
+            result = (
+                sheets.values()
+                .get(spreadsheetId=spreadsheet_id, range=range_)
+                .execute()
+            )
         except HttpError as exc:
             if "Unable to parse range" in str(exc):
                 return None
@@ -101,13 +105,13 @@ class GCloudService:
 
         return result
 
-    def load_many_ranges(self, sheet_id, ranges):
+    def load_many_ranges(self, spreadsheet_id, ranges):
         sheets = self.sheet_service.spreadsheets()
 
         try:
             result = (
                 sheets.values()
-                .batchGet(spreadsheetId=sheet_id, ranges=ranges)
+                .batchGet(spreadsheetId=spreadsheet_id, ranges=ranges)
                 .execute()
             )
         except HttpError as exc:
@@ -118,9 +122,12 @@ class GCloudService:
 
         return result
 
-    def patch_sheet(self, sheet_id, range_, record):
+    def patch_sheet(self, spreadsheet_id, range_, record):
+        self.patch_sheet_list(spreadsheet_id, range_, [record])
+
+    def patch_sheet_list(self, spreadsheet_id, range_, records):
         logging.debug(
-            f"Trying to patch sheet '{sheet_id}' with '{record}' on page '{range_}'"
+            f"Trying to patch sheet '{spreadsheet_id}' with '{records}' on page '{range_}'"
         )
 
         if not self.credentials:
@@ -132,10 +139,10 @@ class GCloudService:
             (
                 sheets.values()
                 .append(
-                    spreadsheetId=sheet_id,
+                    spreadsheetId=spreadsheet_id,
                     range=range_,
                     body={
-                        "values": [record],
+                        "values": records,
                         "majorDimension": "ROWS",
                     },
                     valueInputOption="USER_ENTERED",
@@ -146,10 +153,33 @@ class GCloudService:
         except HttpError as exc:
             raise RuntimeError(f"Request to sheets.values was not successful: {exc}")
 
-    def delete_sheet_file(self, sheet_id):
-        return self.drive_service.files().delete(fileId=sheet_id).execute()
+    def delete_spreadsheet_file(self, spreadsheet_id):
+        return self.drive_service.files().delete(fileId=spreadsheet_id).execute()
 
-    def create_page(self, sheet_id, page_name):
+    def reset_page(self, spreadsheet_id, sheet_name):
+        sheets = self.sheet_service.spreadsheets()
+        range_all = f"{sheet_name}!A1:Z"
+        return (
+            sheets.values()
+            .clear(spreadsheetId=spreadsheet_id, range=range_all, body={})
+            .execute()
+        )
+
+    def delete_page(self, spreadsheet_id, sheet_id):
+        sheets = self.sheet_service.spreadsheets()
+
+        requests_body = {"requests": [{"deleteSheet": {"sheetId": sheet_id}}]}
+
+        try:
+            sheets.batchUpdate(
+                spreadsheetId=spreadsheet_id, body=requests_body
+            ).execute()
+        except HttpError as exc:
+            raise RuntimeError(
+                f"Request to sheets.batchUpdate was not successful: {exc}"
+            )
+
+    def create_page(self, spreadsheet_id, page_name):
         sheets = self.sheet_service.spreadsheets()
 
         requests_body = {
@@ -165,37 +195,42 @@ class GCloudService:
         }
 
         try:
-            sheets.batchUpdate(spreadsheetId=sheet_id, body=requests_body).execute()
+            sheets.batchUpdate(
+                spreadsheetId=spreadsheet_id, body=requests_body
+            ).execute()
         except HttpError as exc:
             raise RuntimeError(
                 f"Request to sheets.batchUpdate was not successful: {exc}"
             )
 
-    def list_all_sheets(self):
+    def list_all_sheets(self, spreadsheet_id):
         sheet_metadata = (
-            self.sheet_service.spreadsheets().get(spreadsheetId=self.sheet_id).execute()
+            self.sheet_service.spreadsheets()
+            .get(spreadsheetId=spreadsheet_id)
+            .execute()
         )
         sheets = sheet_metadata.get("sheets", "")
         return [
             {
                 "title": sh["properties"]["title"],
+                "sheet_id": sh["properties"]["sheetId"],
             }
             for sh in sheets
         ]
 
 
 class ReportTracker(GCloudService):
-    sheet_id = TRACKING_SHEET_ID
+    spreadsheet_id = TRACKING_SHEET_ID
 
     def commit_record(self, device, action, author, message) -> str:
         builder = RecordBuilder()
         builder.build(device, action, author, message)
 
-        current_range_state = self.load_range(self.sheet_id, builder.page)
+        current_range_state = self.load_range(self.spreadsheet_id, builder.page)
 
         if not current_range_state:
-            self.create_page(self.sheet_id, builder.page)
-            current_range_state = self.load_range(self.sheet_id, builder.page)
+            self.create_page(self.spreadsheet_id, builder.page)
+            current_range_state = self.load_range(self.spreadsheet_id, builder.page)
 
         try:
             last_record_num = len(current_range_state["values"]) + 1
@@ -205,7 +240,7 @@ class ReportTracker(GCloudService):
         target_range = f"'{builder.page}'!A{last_record_num}:E{last_record_num}"
 
         try:
-            self.patch_sheet(self.sheet_id, target_range, builder.record)
+            self.patch_sheet(self.spreadsheet_id, target_range, builder.record)
         except Exception as exc:
             logging.exception("")
             return f"Error: {exc}"
@@ -217,7 +252,7 @@ class ReportTracker(GCloudService):
 
 
 class ContextLoader(GCloudService):
-    sheet_id = CONTEXT_SHEET_ID
+    spreadsheet_id = CONTEXT_SHEET_ID
 
     def load_problems_kinds(self):
         values = self.load_range(CONTEXT_SHEET_ID, "problems!A1:B1000")["values"]
@@ -239,10 +274,19 @@ class ContextLoader(GCloudService):
 
 
 class Snapshotter(GCloudService):
-    sheet_id = SNAPSHOTS_SHEET_ID
+    spreadsheet_id = SNAPSHOTS_SHEET_ID
+
+    def reset_or_create_sheet_by_name(self, sheet_name):
+        try:
+            self.reset_page(self.spreadsheet_id, sheet_name)
+        except Exception as exc:
+            if "Unable to parse range" not in str(exc):
+                raise exc
+            self.create_page(self.spreadsheet_id, sheet_name)
 
     def export_records(self, sheet_name: str, data: list):
-        ...
+        self.reset_or_create_sheet_by_name(sheet_name)
+        self.patch_sheet_list(self.spreadsheet_id, f"{sheet_name}!A1:Z", data)
 
 
 if __name__ == "__main__":

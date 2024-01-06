@@ -147,6 +147,11 @@ def get_records_for_device(db: Session, obj_id: int, limit: int = 10):
 
 
 @database.inject_db_session
+def get_records(db: Session, limit: int = 1000):
+    return db.query(md.Record).order_by(md.Record.created_at.desc()).limit(limit).all()
+
+
+@database.inject_db_session
 def get_devices_with_open_problems(db: Session):
     sub = (
         db.query(md.Record)
