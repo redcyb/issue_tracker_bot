@@ -10,7 +10,7 @@ gc = Snapshotter()
 
 
 def export_reports_to_gdoc():
-    data = get_records()
+    data = get_records(limit=1000)
     data = [
         json.loads(
             RecordExport.model_validate(d).model_dump_json(
