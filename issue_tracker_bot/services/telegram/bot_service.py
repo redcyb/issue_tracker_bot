@@ -127,7 +127,7 @@ async def handle_sync_context_request(
         await update.message.reply_text(f"Контекст успішно синхронізовано")
 
 
-async def handle_export_reports(
+async def handle_export_reports_request(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     try:
