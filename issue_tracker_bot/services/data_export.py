@@ -24,9 +24,7 @@ def export_reports_to_gdoc():
 
     data = [header, *[list(d.values()) for d in data]]
 
-    result = gc.export_records(str(datetime.now().date()), data)
-
-    return result
+    gc.export_records(str(datetime.now().date()), data)
 
 
 if __name__ == "__main__":
