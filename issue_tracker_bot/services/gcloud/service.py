@@ -285,7 +285,6 @@ class Snapshotter(GCloudService):
             self.create_page(self.spreadsheet_id, sheet_name)
 
     def export_records(self, sheet_name: str, data: list):
-        logging.info(f"reset doc {self.spreadsheet_id} {sheet_name}")
         self.reset_or_create_sheet_by_name(sheet_name)
         self.patch_sheet_list(self.spreadsheet_id, f"{sheet_name}!A1:Z", data)
 

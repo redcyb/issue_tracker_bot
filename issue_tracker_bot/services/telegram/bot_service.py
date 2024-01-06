@@ -131,7 +131,7 @@ async def handle_export_reports_request(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     try:
-        H.sync_context()
+        H.export_reports()
     except Exception:
         logger.exception("")
         await update.message.reply_text(
