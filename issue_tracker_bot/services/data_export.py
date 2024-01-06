@@ -29,3 +29,4 @@ def export_reports_to_gdoc():
 
 if __name__ == "__main__":
     database.Base.metadata.create_all(bind=database.engine)
+    export_reports_to_gdoc()
